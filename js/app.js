@@ -773,6 +773,152 @@
     return html;
   }
 
+  /* ---------- Interview Prep Page ---------- */
+  var interviewFilters = { level: "", difficulty: "", company: "", search: "" };
+
+  function renderInterview() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data) { content.innerHTML = '<div class="ai-error">Interview data not loaded.</div>'; return; }
+
+    var page = el("div", "interview-page");
+    var totalQ = data.questions.length;
+
+    // Header
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🎯</span> Interview Preparation</h1>' +
+      '<p class="iv-subtitle">Master Python interviews from fresher to senior (0-10+ years). Structured answers with analogies, code, complexity & tips.</p>' +
+      '<div class="iv-stats">' +
+        '<span class="iv-stat"><b>' + totalQ + '</b> Questions</span>' +
+        '<span class="iv-stat"><b>' + data.levels.length + '</b> Topics</span>' +
+        '<span class="iv-stat"><b>' + data.companyGuide.length + '</b> Company Guides</span>' +
+      '</div></div>';
+
+    // Filter bar
+    var filterBar = el("div", "iv-filters");
+    // Search
+    var searchInp = el("input", "iv-search"); searchInp.type = "search"; searchInp.placeholder = "🔍 Search questions...";
+    searchInp.value = interviewFilters.search;
+    filterBar.appendChild(searchInp);
+    // Level filter
+    var levelSel = el("select", "iv-select");
+    levelSel.innerHTML = '<option value="">All Topics</option>' + data.levels.map(function (l) { return '<option value="' + l + '"' + (interviewFilters.level === l ? ' selected' : '') + '>' + l + '</option>'; }).join("");
+    filterBar.appendChild(levelSel);
+    // Difficulty filter
+    var diffSel = el("select", "iv-select");
+    var diffs = ["Beginner", "Intermediate", "Advanced", "Expert"];
+    diffSel.innerHTML = '<option value="">All Levels</option>' + diffs.map(function (d) { return '<option value="' + d + '"' + (interviewFilters.difficulty === d ? ' selected' : '') + '>' + d + '</option>'; }).join("");
+    filterBar.appendChild(diffSel);
+    // Company filter
+    var compSel = el("select", "iv-select");
+    compSel.innerHTML = '<option value="">All Companies</option>' + data.companies.map(function (c) { return '<option value="' + c + '"' + (interviewFilters.company === c ? ' selected' : '') + '>' + c + '</option>'; }).join("");
+    filterBar.appendChild(compSel);
+    page.appendChild(filterBar);
+
+    // Results container
+    var results = el("div", "iv-results"); results.id = "ivResults";
+    page.appendChild(results);
+
+    // Company guide section
+    var guideSection = el("div", "iv-guide-section");
+    guideSection.innerHTML = '<h2 class="iv-section-title">🏢 Company-wise Interview Guide</h2>';
+    var guideGrid = el("div", "iv-guide-grid");
+    data.companyGuide.forEach(function (g) {
+      var card = el("div", "iv-guide-card");
+      card.innerHTML = '<div class="iv-guide-head"><span class="iv-guide-name">' + escapeHtml(g.name) + '</span><span class="iv-guide-tier">' + escapeHtml(g.tier) + '</span></div>' +
+        '<div class="iv-guide-row"><b>Rounds:</b> ' + escapeHtml(g.rounds) + '</div>' +
+        '<div class="iv-guide-row"><b>Focus:</b> ' + escapeHtml(g.focus) + '</div>' +
+        '<div class="iv-guide-row"><b>Patterns:</b> ' + escapeHtml(g.patterns) + '</div>' +
+        '<div class="iv-guide-tip">💡 ' + escapeHtml(g.tips) + '</div>';
+      guideGrid.appendChild(card);
+    });
+    guideSection.appendChild(guideGrid);
+    page.appendChild(guideSection);
+
+    content.appendChild(page);
+
+    function applyFilters() {
+      interviewFilters.search = searchInp.value.toLowerCase().trim();
+      interviewFilters.level = levelSel.value;
+      interviewFilters.difficulty = diffSel.value;
+      interviewFilters.company = compSel.value;
+      renderQuestions();
+    }
+
+    function renderQuestions() {
+      var filtered = data.questions.filter(function (q) {
+        if (interviewFilters.level && q.level !== interviewFilters.level) return false;
+        if (interviewFilters.difficulty && q.difficulty !== interviewFilters.difficulty) return false;
+        if (interviewFilters.company && (!q.company || q.company.indexOf(interviewFilters.company) === -1)) return false;
+        if (interviewFilters.search) {
+          var hay = (q.q + " " + q.answer + " " + q.level).toLowerCase();
+          if (hay.indexOf(interviewFilters.search) === -1) return false;
+        }
+        return true;
+      });
+      results.innerHTML = '<div class="iv-count">Showing ' + filtered.length + ' of ' + data.questions.length + ' questions</div>';
+      if (!filtered.length) { results.innerHTML += '<div class="iv-empty">No questions match your filters. Try clearing them.</div>'; return; }
+      filtered.forEach(function (q, i) { results.appendChild(renderQuestionCard(q, i + 1)); });
+    }
+
+    searchInp.addEventListener("input", applyFilters);
+    levelSel.addEventListener("change", applyFilters);
+    diffSel.addEventListener("change", applyFilters);
+    compSel.addEventListener("change", applyFilters);
+
+    renderQuestions();
+    highlightSidebar(null, null);
+    document.title = "Interview Prep | " + T("heroTitle");
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  function renderQuestionCard(q, index) {
+    var card = el("div", "iv-card");
+    var diffClass = "diff-" + (q.difficulty || "beginner").toLowerCase();
+
+    var header = el("button", "iv-card-head");
+    header.innerHTML = '<span class="iv-q-num">Q' + index + '</span>' +
+      '<span class="iv-q-text">' + escapeHtml(q.q) + '</span>' +
+      '<span class="iv-badges"><span class="iv-diff ' + diffClass + '">' + escapeHtml(q.difficulty) + '</span></span>' +
+      '<span class="iv-toggle-arrow">▼</span>';
+
+    var body = el("div", "iv-card-body"); body.style.display = "none";
+
+    var html = '<div class="iv-meta-row">' +
+      '<span class="iv-meta"><b>Experience:</b> ' + escapeHtml(q.experience || "All") + '</span>' +
+      (q.company ? '<span class="iv-meta"><b>Asked at:</b> ' + q.company.map(escapeHtml).join(", ") + '</span>' : '') +
+      '</div>';
+
+    if (q.why) html += '<div class="iv-block iv-why"><div class="iv-block-title">🤔 Why interviewers ask this</div>' + escapeHtml(q.why) + '</div>';
+    if (q.answer) html += '<div class="iv-block"><div class="iv-block-title">✅ Answer</div>' + renderNotes(q.answer) + '</div>';
+    if (q.analogy) html += '<div class="iv-block iv-analogy"><div class="iv-block-title">🏠 Real-Life Analogy</div>' + renderNotes(q.analogy) + '</div>';
+    if (q.code) html += '<div class="iv-block"><div class="iv-block-title">💻 Code Example</div><pre class="diagram-box">' + highlight(q.code) + '</pre>' + (q.output ? '<div class="iv-output">Output: ' + escapeHtml(q.output) + '</div>' : '') + '</div>';
+
+    if (q.timeComplexity || q.spaceComplexity) {
+      html += '<div class="iv-complexity">';
+      if (q.timeComplexity) html += '<span class="iv-cx">⏱️ Time: <b>' + escapeHtml(q.timeComplexity) + '</b></span>';
+      if (q.spaceComplexity) html += '<span class="iv-cx">💾 Space: <b>' + escapeHtml(q.spaceComplexity) + '</b></span>';
+      html += '</div>';
+    }
+
+    if (q.mistakes) html += '<div class="iv-block iv-mistake"><div class="iv-block-title">⚠️ Common Mistakes</div>' + escapeHtml(q.mistakes) + '</div>';
+    if (q.bestPractices) html += '<div class="iv-block iv-best"><div class="iv-block-title">⭐ Best Practices</div>' + escapeHtml(q.bestPractices) + '</div>';
+    if (q.followUps && q.followUps.length) html += '<div class="iv-block"><div class="iv-block-title">🔗 Follow-up Questions</div><ul>' + q.followUps.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join("") + '</ul></div>';
+    if (q.tips) html += '<div class="iv-block iv-tip"><div class="iv-block-title">💡 Tip to Answer Confidently</div>' + escapeHtml(q.tips) + '</div>';
+
+    body.innerHTML = html;
+
+    header.addEventListener("click", function () {
+      var show = body.style.display === "none";
+      body.style.display = show ? "block" : "none";
+      header.classList.toggle("open", show);
+    });
+
+    card.appendChild(header);
+    card.appendChild(body);
+    return card;
+  }
+
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
     else fallbackCopy(text);
@@ -818,6 +964,7 @@
     var hash = currentRoute();
     if (/^#\/workspace/.test(hash)) { renderWorkspace(); }
     else if (/^#\/ai-explain/.test(hash)) { renderAIExplain(); }
+    else if (/^#\/interview/.test(hash)) { renderInterview(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);
       if (m) renderModule(parseInt(m[1], 10), m[2] || null);

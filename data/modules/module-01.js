@@ -312,6 +312,128 @@ window.DP.registerModule({
         "- Add comments (`#`) to explain complex code",
         "- Test your code frequently — run it after every few lines"
       ]
+    },
+    {
+      title: "Python Variables (Deep Dive)",
+      badge: "Core · 55+ examples",
+      notes: [
+        "A variable is a name attached to a value. Create it with `name = value`.",
+        "Variables can be reassigned, hold any type, and change type at any time (dynamic typing).",
+        "> Analogy: A variable is a sticky note with a label — you can move it to any object."
+      ],
+      examples: [
+        { title: "Basic string variable", code: `name = "Arjun"\nprint(name)`, output: `Arjun` },
+        { title: "Basic int variable", code: `age = 25\nprint(age)`, output: `25` },
+        { title: "Float variable", code: `pi = 3.14\nprint(pi)`, output: `3.14` },
+        { title: "Boolean variable", code: `active = True\nprint(active)`, output: `True` },
+        { title: "None variable", code: `result = None\nprint(result)`, output: `None` },
+        { title: "Reassignment", code: `x = 10; print(x)\nx = 20; print(x)`, output: `10\n20` },
+        { title: "Type change on reassign", code: `data = 100\nprint(type(data))\ndata = "hundred"\nprint(type(data))`, output: `<class 'int'>\n<class 'str'>` },
+        { title: "Multiple assignment on one line", code: `a, b, c = 1, 2, 3\nprint(a, b, c)`, output: `1 2 3` },
+        { title: "Same value to many names", code: `x = y = z = 100\nprint(x, y, z)`, output: `100 100 100` },
+        { title: "Swap two variables", code: `a, b = 5, 10\na, b = b, a\nprint(a, b)`, output: `10 5` },
+        { title: "Swap three variables", code: `a, b, c = 1, 2, 3\na, b, c = c, a, b\nprint(a, b, c)`, output: `3 1 2` },
+        { title: "Arithmetic with variables", code: `price = 250\nqty = 4\ntotal = price * qty\nprint(total)`, output: `1000` },
+        { title: "Combine text variables", code: `first = "John"\nlast = "Doe"\nprint(first + " " + last)`, output: `John Doe` },
+        { title: "Constant by convention", code: `PI = 3.14159\nradius = 5\nprint(PI * radius ** 2)`, output: `78.53975` },
+        { title: "Delete a variable", code: `temp = 99\nprint(temp)\ndel temp\nprint("deleted")`, output: `99\ndeleted` },
+        { title: "id() shows memory address", code: `x = 100\nprint(type(id(x)).__name__)`, output: `int` },
+        { title: "Small ints are cached", code: `a = 100; b = 100\nprint(a is b)`, output: `True` },
+        { title: "Value equal, identity different", code: `a = [1, 2]; b = [1, 2]\nprint(a == b, a is b)`, output: `True False` },
+        { title: "Aliasing (same object)", code: `a = [1, 2, 3]\nb = a\nb.append(4)\nprint(a)`, output: `[1, 2, 3, 4]` },
+        { title: "Copy (independent)", code: `a = [1, 2, 3]\nb = a.copy()\nb.append(4)\nprint(a, b)`, output: `[1, 2, 3] [1, 2, 3, 4]` },
+        { title: "Walrus operator :=", code: `if (n := 15) > 10:\n    print("n is", n)`, output: `n is 15` },
+        { title: "Type-annotated variable", code: `age: int = 25\nname: str = "Sara"\nprint(age, name)`, output: `25 Sara` },
+        { title: "Underscore in large numbers", code: `pop = 1_400_000_000\nprint(pop)`, output: `1400000000` },
+        { title: "Global variable via function", code: `count = 0\ndef bump():\n    global count\n    count += 1\nbump(); bump()\nprint(count)`, output: `2` },
+        { title: "+= increment", code: `x = 10\nx += 5\nprint(x)`, output: `15` },
+        { title: "-= decrement", code: `x = 10\nx -= 3\nprint(x)`, output: `7` },
+        { title: "*= multiply-assign", code: `x = 4\nx *= 3\nprint(x)`, output: `12` },
+        { title: "/= divide-assign", code: `x = 20\nx /= 4\nprint(x)`, output: `5.0` },
+        { title: "//= floor-divide", code: `x = 17\nx //= 5\nprint(x)`, output: `3` },
+        { title: "%= remainder-assign", code: `x = 17\nx %= 5\nprint(x)`, output: `2` },
+        { title: "**= power-assign", code: `x = 2\nx **= 5\nprint(x)`, output: `32` },
+        { title: "Unpack from a list", code: `r, g, b = [255, 128, 0]\nprint(r, g, b)`, output: `255 128 0` },
+        { title: "Extended unpack with *", code: `first, *rest = [1, 2, 3, 4, 5]\nprint(first, rest)`, output: `1 [2, 3, 4, 5]` },
+        { title: "Middle unpack with *", code: `first, *mid, last = [1, 2, 3, 4, 5]\nprint(first, mid, last)`, output: `1 [2, 3, 4] 5` },
+        { title: "Variable in f-string", code: `name = "Ravi"; score = 90\nprint(f"{name} scored {score}")`, output: `Ravi scored 90` },
+        { title: "Number to string", code: `age = 25\nprint("Age: " + str(age))`, output: `Age: 25` },
+        { title: "Loop counter", code: `count = 0\nfor _ in range(5):\n    count += 1\nprint(count)`, output: `5` },
+        { title: "Accumulate sum", code: `total = 0\nfor n in [10, 20, 30]:\n    total += n\nprint(total)`, output: `60` },
+        { title: "Build string in loop", code: `s = ""\nfor ch in "abc":\n    s += ch + "-"\nprint(s)`, output: `a-b-c-` },
+        { title: "Temperature converter", code: `c = 37\nf = c * 9/5 + 32\nprint(f)`, output: `98.6` },
+        { title: "Simple interest", code: `p, r, t = 1000, 5, 2\nsi = p * r * t / 100\nprint(si)`, output: `100.0` },
+        { title: "Rectangle area & perimeter", code: `l, w = 8, 5\narea = l * w\nperi = 2*(l+w)\nprint(area, peri)`, output: `40 26` },
+        { title: "Average of 3 numbers", code: `a, b, c = 70, 80, 90\nprint((a+b+c)/3)`, output: `80.0` },
+        { title: "Boolean from comparison", code: `age = 20\nadult = age >= 18\nprint(adult)`, output: `True` },
+        { title: "Reassign to computed value", code: `score = 40\nscore = score * 2 + 5\nprint(score)`, output: `85` },
+        { title: "Chained comparison stored", code: `x = 5\nin_range = 1 < x < 10\nprint(in_range)`, output: `True` },
+        { title: "Nested calculation (billing)", code: `price = 200; qty = 3; tax = 0.18\nsub = price * qty\ntotal = sub + sub * tax\nprint(total)`, output: `708.0` },
+        { title: "Repeated string", code: `line = "=" * 15\nprint(line)`, output: `===============` },
+        { title: "Complex number", code: `z = 2 + 3j\nprint(z, z.real, z.imag)`, output: `(2+3j) 2.0 3.0` },
+        { title: "List variable", code: `nums = [10, 20, 30]\nprint(nums, len(nums))`, output: `[10, 20, 30] 3` },
+        { title: "Tuple variable", code: `point = (3, 4)\nprint(point[0], point[1])`, output: `3 4` },
+        { title: "Dict variable", code: `user = {"name": "Sara", "age": 30}\nprint(user["name"])`, output: `Sara` },
+        { title: "Set variable", code: `unique = {1, 2, 2, 3}\nprint(unique)`, output: `{1, 2, 3}` },
+        { title: "Multiple types in one line", code: `n, s, f, b = 10, "hi", 3.14, True\nprint(n, s, f, b)`, output: `10 hi 3.14 True` },
+        { title: "Variable naming — snake_case", code: `first_name = "Meera"\nlast_name = "Iyer"\nprint(first_name, last_name)`, output: `Meera Iyer` },
+        { title: "Underscore _ as throwaway", code: `for _ in range(3):\n    print("hi", end=" ")`, output: `hi hi hi ` },
+        { title: "Multiple returns unpack", code: `def stats(a, b):\n    return a+b, a*b, a-b\ns, p, d = stats(5, 3)\nprint(s, p, d)`, output: `8 15 2` },
+        { title: "Storing function in a variable", code: `f = len\nprint(f("python"))`, output: `6` },
+        { title: "Reassign function reference", code: `greet = lambda: "hi"\nprint(greet())`, output: `hi` },
+        { title: "Constant with all-caps", code: `MAX_SPEED = 120\nspeed = 90\nprint("safe" if speed <= MAX_SPEED else "over")`, output: `safe` }
+      ]
+    },
+    {
+      title: "Python Comments",
+      badge: "Syntax",
+      notes: [
+        "Comments are notes that Python ignores. Start with `#`.",
+        "Use them to explain WHY code does something (not just what)."
+      ],
+      examples: [
+        { title: "Single-line comment", code: `# This is a comment\nprint("hi")`, output: `hi` },
+        { title: "Inline comment", code: `price = 100  # rupees\nprint(price)`, output: `100` },
+        { title: "Docstring as block comment", code: `"""\nProgram: greet user\nAuthor: Code Origin.AI\n"""\nprint("started")`, output: `started` },
+        { title: "Commenting out disabled code", code: `print("this runs")\n# print("this is skipped")`, output: `this runs` },
+        { title: "Explaining a formula", code: `# Convert C to F: F = C * 9/5 + 32\nc = 100\nf = c * 9/5 + 32\nprint(f)`, output: `212.0` },
+        { title: "Section headers with comments", code: `# --- Setup ---\nx = 10\n# --- Compute ---\ny = x * 2\nprint(y)`, output: `20` },
+        { title: "TODO markers", code: `def process():\n    # TODO: implement\n    pass\nprocess()\nprint("done")`, output: `done` },
+        { title: "Multi-line note", code: `# Step 1: load data\n# Step 2: transform\n# Step 3: save\nprint("plan ready")`, output: `plan ready` }
+      ]
+    },
+    {
+      title: "Python Keywords",
+      badge: "Syntax",
+      notes: [
+        "Keywords are reserved words with special meaning. Cannot be used as variable names.",
+        "Modern Python has 35 keywords."
+      ],
+      examples: [
+        { title: "List all keywords", code: `import keyword\nprint(keyword.kwlist[:5])`, output: `['False', 'None', 'True', 'and', 'as']` },
+        { title: "Count of keywords", code: `import keyword\nprint(len(keyword.kwlist))`, output: `35` },
+        { title: "Check if word is keyword", code: `import keyword\nprint(keyword.iskeyword("for"))\nprint(keyword.iskeyword("data"))`, output: `True\nFalse` },
+        { title: "Common keywords in action", code: `for i in range(3):\n    if i == 1: continue\n    print(i)`, output: `0\n2` },
+        { title: "match-case keyword", code: `x = 2\nmatch x:\n    case 1: print("one")\n    case 2: print("two")\n    case _: print("other")`, output: `two` },
+        { title: "async keyword", code: `import asyncio\nasync def hi():\n    return "hello"\nprint(asyncio.run(hi()))`, output: `hello` },
+        { title: "with keyword (context manager)", code: `# Illustrative:\nwith open("/dev/null", "w") as f:\n    f.write("data")\nprint("saved")`, output: `saved` }
+      ]
+    },
+    {
+      title: "Python Identifiers",
+      badge: "Syntax",
+      notes: [
+        "Identifiers are names for variables, functions, classes.",
+        "Rules: letters/digits/underscore; can't start with digit; can't be a keyword; case-sensitive."
+      ],
+      examples: [
+        { title: "Valid identifiers", code: `student_name = "Ravi"\nage2 = 20\n_total = 500\nprint(student_name, age2, _total)`, output: `Ravi 20 500` },
+        { title: "Case sensitivity matters", code: `age = 25; Age = 30\nprint(age, Age)`, output: `25 30` },
+        { title: "isidentifier() check", code: `print("data".isidentifier())\nprint("2data".isidentifier())\nprint("my var".isidentifier())`, output: `True\nFalse\nFalse` },
+        { title: "Constants convention", code: `MAX_SPEED = 120\nMIN_AGE = 18\nprint(MAX_SPEED, MIN_AGE)`, output: `120 18` },
+        { title: "Naming a class", code: `class BankAccount:\n    pass\nprint(BankAccount.__name__)`, output: `BankAccount` },
+        { title: "Underscore prefix — 'private'", code: `class C:\n    def __init__(self):\n        self._internal = 42\n    def get(self): return self._internal\nprint(C().get())`, output: `42` }
+      ]
     }
   ]
 });

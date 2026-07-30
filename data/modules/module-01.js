@@ -1,360 +1,316 @@
-/* Module 1 — Introduction to Python (v4 Production — with explanations) */
+/* Module 1 — Introduction to Python (v7 — Full 12-Step Teaching Framework) */
 window.DP.registerModule({
   id: 1,
   title: "Introduction to Python",
   icon: "🐍",
-  summary: "What Python is, how to install and run it, and your first programs with detailed step-by-step explanations for beginners. Every example includes a 'How it works' section.",
+  summary: "Complete beginner-friendly introduction with the 12-step classroom teaching method: analogies, diagrams, step-by-step execution traces, common mistakes, interview questions and practice problems.",
   concepts: [
     {
       title: "What is Python?",
       badge: "Concept",
-      notes: [
-        "**Python** is a programming language — it lets you give instructions to a computer. Created by **Guido van Rossum** in 1991.",
-        "- **Easy to read** — looks almost like English.",
-        "- **Interpreted** — runs your code line by line (no compile step).",
-        "- **Free** — download and use for free on any computer.",
-        "> Think of Python as a universal language that lets you talk to any computer."
+
+      introduction: [
+        "**What is it?** Python is a programming language — a way to give instructions to a computer.",
+        "**Why do we need it?** Computers don't understand Hindi, English or Kannada. They need a special language. Python is that language — and it's the easiest one to learn.",
+        "**Where is it used?**",
+        "- Google, YouTube, Instagram — all use Python",
+        "- Banks use it for calculations",
+        "- Hospitals use it for patient data",
+        "- Scientists use it for research",
+        "- Companies use it for automation (doing boring work automatically)",
+        "**Why do companies hire Python developers?** Because Python is fast to write, easy to maintain, and can do almost anything."
       ],
+
+      analogy: [
+        "**Think of it like a TV Remote:**",
+        "- You press buttons (write code) → TV does what you want (computer follows instructions)",
+        "- The remote has specific buttons (Python has specific commands)",
+        "- Press Volume Up → TV increases volume",
+        "- Write `print(\"Hello\")` → Computer shows 'Hello' on screen",
+        "",
+        "**Another analogy — a Recipe:**",
+        "- A recipe has step-by-step instructions (Line 1, Line 2, Line 3...)",
+        "- Python code is the same — instructions executed one by one, top to bottom",
+        "- If you skip a step in a recipe, the dish goes wrong",
+        "- If you skip a line in Python, the program goes wrong"
+      ],
+
+      diagram: [
+        "┌─────────────────────────────────────────────────┐",
+        "│            HOW PYTHON WORKS                      │",
+        "├─────────────────────────────────────────────────┤",
+        "│                                                 │",
+        "│   YOU write code ──→ Python reads it            │",
+        "│        │                    │                    │",
+        "│        │                    ▼                    │",
+        "│        │            Executes line by line        │",
+        "│        │                    │                    │",
+        "│        │                    ▼                    │",
+        "│        │            Shows output on screen       │",
+        "│        ▼                                        │",
+        "│   print(\"Hello\")  ──→  Hello                    │",
+        "│   print(2 + 3)    ──→  5                        │",
+        "│   print(\"Hi\" * 3) ──→  HiHiHi                  │",
+        "│                                                 │",
+        "└─────────────────────────────────────────────────┘"
+      ],
+
+      syntax: [
+        "**The `print()` command:**",
+        "```",
+        "print(\"your message here\")",
+        "```",
+        "- `print` — the command name (always lowercase)",
+        "- `(` and `)` — parentheses (required — put your message inside)",
+        "- `\"` and `\"` — quotes (wrap text in double quotes)",
+        "- The text between quotes is what appears on screen",
+        "",
+        "> **Rule:** Python is case-sensitive. `Print` or `PRINT` will NOT work. Only `print` works."
+      ],
+
+      notes: [
+        "**Python** is a high-level, interpreted programming language. It runs your code line by line from top to bottom.",
+        "- Created by **Guido van Rossum** in 1991",
+        "- Named after Monty Python (a comedy group), not the snake",
+        "- Used by Google, NASA, Netflix, Instagram, and millions of developers"
+      ],
+
       examples: [
         {
-          title: "Your very first Python program",
+          title: "Your very first program — Hello World",
           code: `print("Hello, World!")`,
           output: `Hello, World!`,
           explanation: [
-            "**What this does:** Displays the text 'Hello, World!' on the screen.",
+            "## 🎯 What this program does",
+            "Displays the message 'Hello, World!' on the screen.",
             "",
-            "- `print()` is a built-in **function** — it shows whatever you put inside the parentheses `()` on the screen.",
-            "- `\"Hello, World!\"` is a **string** — text data wrapped in quotes.",
-            "- When Python sees `print(...)`, it takes whatever is inside and displays it.",
+            "## 📝 Line-by-Line Execution Trace",
             "",
-            "> **Analogy:** Think of `print()` like a speaker — you give it a message, and it announces it to everyone."
+            "**Line 1: `print(\"Hello, World!\")`**",
+            "- Python sees the command `print()`",
+            "- It looks inside the parentheses: `\"Hello, World!\"`",
+            "- It takes that text and displays it on screen",
+            "- Result: `Hello, World!` appears",
+            "",
+            "## 🧠 Memory State",
+            "- No variables created",
+            "- Python just prints and moves on",
+            "",
+            "> **Analogy:** Like telling a speaker 'Say Hello World' — it just says it out loud."
           ]
         },
         {
-          title: "Print multiple messages",
-          code: `print("My name is Arjun")\nprint("I am learning Python")\nprint("This is fun!")`,
-          output: `My name is Arjun\nI am learning Python\nThis is fun!`,
+          title: "Print multiple lines",
+          code: `print("My name is Arjun")\nprint("I am learning Python")\nprint("Python is easy!")`,
+          output: `My name is Arjun\nI am learning Python\nPython is easy!`,
           explanation: [
-            "**What this does:** Prints three separate lines of text.",
+            "## 🎯 What this program does",
+            "Prints 3 separate messages, each on a new line.",
             "",
-            "- Python runs your code **top to bottom**, one line at a time.",
-            "- Each `print()` statement creates a **new line** of output.",
-            "- Line 1 runs first → prints 'My name is Arjun'",
-            "- Line 2 runs next → prints 'I am learning Python'",
-            "- Line 3 runs last → prints 'This is fun!'",
+            "## 📝 Execution Trace (top to bottom)",
             "",
-            "> **Key idea:** Python executes instructions in order, like reading a book from top to bottom."
+            "**Step 1: `print(\"My name is Arjun\")`**",
+            "- Python reads Line 1 → displays 'My name is Arjun'",
+            "- Moves to next line ↓",
+            "",
+            "**Step 2: `print(\"I am learning Python\")`**",
+            "- Python reads Line 2 → displays 'I am learning Python'",
+            "- Moves to next line ↓",
+            "",
+            "**Step 3: `print(\"Python is easy!\")`**",
+            "- Python reads Line 3 → displays 'Python is easy!'",
+            "- No more lines → Program ends ✓",
+            "",
+            "## 🔑 Key Rule",
+            "Python ALWAYS runs code from **top to bottom**, one line at a time. Never jumps around (unless you tell it to with loops/conditions)."
           ]
         },
         {
-          title: "Print numbers",
-          code: `print(42)\nprint(3.14)\nprint(100 + 200)`,
-          output: `42\n3.14\n300`,
+          title: "Python as a calculator",
+          code: `print(10 + 5)\nprint(20 - 8)\nprint(6 * 7)\nprint(15 / 4)`,
+          output: `15\n12\n42\n3.75`,
           explanation: [
-            "**What this does:** Prints numbers and the result of a calculation.",
+            "## 🎯 What this program does",
+            "Uses Python as a calculator to do math.",
             "",
-            "- `print(42)` — prints the whole number 42 (no quotes needed for numbers).",
-            "- `print(3.14)` — prints a decimal number.",
-            "- `print(100 + 200)` — Python **calculates** 100+200 first, then prints the result 300.",
+            "## 📝 Execution Trace",
             "",
-            "> **Key idea:** Python can be used like a calculator. It solves math before printing."
+            "**Line 1: `print(10 + 5)`**",
+            "- Python calculates 10 + 5 = 15",
+            "- Displays: `15`",
+            "",
+            "**Line 2: `print(20 - 8)`**",
+            "- Python calculates 20 - 8 = 12",
+            "- Displays: `12`",
+            "",
+            "**Line 3: `print(6 * 7)`**",
+            "- `*` means multiplication",
+            "- Python calculates 6 × 7 = 42",
+            "- Displays: `42`",
+            "",
+            "**Line 4: `print(15 / 4)`**",
+            "- `/` means division",
+            "- Python calculates 15 ÷ 4 = 3.75",
+            "- Displays: `3.75`",
+            "",
+            "## 🔑 Math Symbols in Python",
+            "- `+` → Addition",
+            "- `-` → Subtraction",
+            "- `*` → Multiplication (not ×)",
+            "- `/` → Division (not ÷)"
           ]
         },
         {
-          title: "Combine text and numbers",
-          code: `print("I have", 5, "apples")`,
-          output: `I have 5 apples`,
+          title: "Store data in a variable",
+          code: `name = "Arjun"\nage = 25\nprint(name)\nprint(age)`,
+          output: `Arjun\n25`,
           explanation: [
-            "**What this does:** Prints text and a number together in one line.",
+            "## 🎯 What this program does",
+            "Stores data (name and age) in variables, then displays them.",
             "",
-            "- When you put **commas** between items in `print()`, Python prints them all separated by spaces.",
-            "- `\"I have\"` is text, `5` is a number, `\"apples\"` is text.",
-            "- Python automatically adds a space between each item.",
+            "## 📝 Execution Trace",
             "",
-            "> **Key idea:** Use commas in `print()` to show multiple things on one line."
-          ]
-        }
-      ]
-    },
-
-
-    {
-      title: "Python Variables",
-      badge: "Core · 55+ examples with explanations",
-      notes: [
-        "A **variable** is like a **labeled box** where you store information. You create one by writing: `name = value`",
-        "- The **name** is the label (you choose it).",
-        "- The `=` sign means 'store this value'.",
-        "- The **value** is what goes inside the box.",
-        "",
-        "> **Non-programmer analogy:** Imagine sticky notes. You write 'age' on a sticky note and stick it on the number 25. Now whenever you say 'age', Python knows you mean 25."
-      ],
-      examples: [
-        {
-          title: "Store and display a name",
-          code: `name = "Arjun"\nprint(name)`,
-          output: `Arjun`,
-          explanation: [
-            "**Step by step:**",
-            "1. `name = \"Arjun\"` — Creates a variable called `name` and stores the text 'Arjun' in it.",
-            "2. `print(name)` — Looks up what's stored in `name` and displays it.",
+            "**Line 1: `name = \"Arjun\"`**",
+            "- Creates a box labeled 'name'",
+            "- Puts 'Arjun' inside that box",
+            "- Memory: `name → \"Arjun\"`",
             "",
-            "- The quotes `\"\"` tell Python this is text (a string).",
-            "- After line 1, whenever Python sees `name`, it remembers it means 'Arjun'.",
+            "**Line 2: `age = 25`**",
+            "- Creates a box labeled 'age'",
+            "- Puts 25 inside that box",
+            "- Memory: `name → \"Arjun\"`, `age → 25`",
             "",
-            "> **Analogy:** Like saving a contact in your phone. You save 'Arjun' under the name 'name'. Later you just say 'show me name' and it shows 'Arjun'."
+            "**Line 3: `print(name)`**",
+            "- Python opens the box labeled 'name'",
+            "- Finds 'Arjun' inside",
+            "- Displays: `Arjun`",
+            "",
+            "**Line 4: `print(age)`**",
+            "- Python opens the box labeled 'age'",
+            "- Finds 25 inside",
+            "- Displays: `25`",
+            "",
+            "## 🧠 Memory State After Execution",
+            "```",
+            "┌──────────┬───────────┐",
+            "│ Variable │ Value     │",
+            "├──────────┼───────────┤",
+            "│ name     │ \"Arjun\"   │",
+            "│ age      │ 25        │",
+            "└──────────┴───────────┘",
+            "```"
           ]
         },
         {
-          title: "Store different types of data",
-          code: `name = "Arjun"\nage = 25\nsalary = 45000.50\n\nprint(name)\nprint(age)\nprint(salary)`,
-          output: `Arjun\n25\n45000.5`,
+          title: "Calculate total bill",
+          code: `price = 250\nquantity = 4\ntotal = price * quantity\nprint("Total:", total)`,
+          output: `Total: 1000`,
           explanation: [
-            "**Step by step:**",
-            "1. `name = \"Arjun\"` — Stores text (string) in variable `name`.",
-            "2. `age = 25` — Stores a whole number (integer) in variable `age`.",
-            "3. `salary = 45000.50` — Stores a decimal number (float) in variable `salary`.",
-            "4-6. `print(...)` — Displays each variable's value.",
+            "## 🎯 What this program does",
+            "Calculates a shopping bill (price × quantity).",
             "",
-            "**Three data types shown:**",
-            "- **String** (text) — always in quotes: `\"Arjun\"`",
-            "- **Integer** (whole number) — no quotes: `25`",
-            "- **Float** (decimal number) — has a dot: `45000.50`",
+            "## 📝 Execution Trace",
             "",
-            "> Python automatically knows the type based on what you store — you don't need to tell it!"
+            "**Line 1: `price = 250`**",
+            "- Memory: `price → 250`",
+            "",
+            "**Line 2: `quantity = 4`**",
+            "- Memory: `price → 250`, `quantity → 4`",
+            "",
+            "**Line 3: `total = price * quantity`**",
+            "- Python looks up `price` → finds 250",
+            "- Python looks up `quantity` → finds 4",
+            "- Calculates: 250 × 4 = 1000",
+            "- Stores result: `total → 1000`",
+            "- Memory: `price → 250`, `quantity → 4`, `total → 1000`",
+            "",
+            "**Line 4: `print(\"Total:\", total)`**",
+            "- Prints the text 'Total:' followed by the value of `total` (1000)",
+            "- Output: `Total: 1000`",
+            "",
+            "## 🏠 Real-World Connection",
+            "This is exactly how a shop billing system works — multiply price by quantity to get the total!"
           ]
         },
         {
-          title: "Change a variable's value",
-          code: `score = 10\nprint("Before:", score)\nscore = 20\nprint("After:", score)`,
-          output: `Before: 10\nAfter: 20`,
-          explanation: [
-            "**Step by step:**",
-            "1. `score = 10` — Creates `score` with value 10.",
-            "2. `print(...)` — Shows 'Before: 10'.",
-            "3. `score = 20` — **Replaces** the old value (10) with 20.",
-            "4. `print(...)` — Shows 'After: 20'.",
-            "",
-            "> **Key idea:** Variables can be changed! The old value is forgotten when you assign a new one. It's like erasing a whiteboard and writing something new."
-          ]
-        },
-        {
-          title: "Do math with variables",
-          code: `price = 250\nquantity = 4\ntotal = price * quantity\nprint("Total bill:", total)`,
-          output: `Total bill: 1000`,
-          explanation: [
-            "**Step by step:**",
-            "1. `price = 250` — One item costs 250.",
-            "2. `quantity = 4` — Buying 4 items.",
-            "3. `total = price * quantity` — Python calculates 250 × 4 = 1000 and stores it in `total`.",
-            "4. `print(...)` — Shows the result.",
-            "",
-            "**The `*` symbol means multiplication.** Python replaces `price` with 250 and `quantity` with 4, then calculates.",
-            "",
-            "> **Real-world:** This is exactly how a billing system works — store prices in variables, calculate the total."
-          ]
-        },
-        {
-          title: "Swap two variables",
-          code: `a = 5\nb = 10\nprint("Before:", a, b)\n\na, b = b, a\nprint("After:", a, b)`,
+          title: "Swap two values",
+          code: `a = 5\nb = 10\nprint("Before:", a, b)\na, b = b, a\nprint("After:", a, b)`,
           output: `Before: 5 10\nAfter: 10 5`,
           explanation: [
-            "**What this does:** Exchanges the values of two variables.",
+            "## 🎯 What this program does",
+            "Exchanges (swaps) the values of two variables.",
             "",
-            "1. `a = 5, b = 10` — a holds 5, b holds 10.",
-            "2. `a, b = b, a` — This is Python's magic swap! It takes both values at the same time and switches them.",
+            "## 📝 Execution Trace",
             "",
-            "**Why is this special?** In most languages you need a temporary variable. In Python, you can swap in one line!",
+            "**Line 1: `a = 5`** → Memory: `a → 5`",
+            "**Line 2: `b = 10`** → Memory: `a → 5`, `b → 10`",
+            "**Line 3: `print(...)`** → Output: `Before: 5 10`",
             "",
-            "> **Analogy:** Imagine two cups — one has tea, one has coffee. Python lifts both at the same time and puts them in each other's place."
-          ]
-        },
-        {
-          title: "Temperature converter",
-          code: `celsius = 37\nfahrenheit = celsius * 9 / 5 + 32\nprint(f"{celsius}°C = {fahrenheit}°F")`,
-          output: `37°C = 98.6°F`,
-          explanation: [
-            "**Step by step:**",
-            "1. `celsius = 37` — Store the temperature (human body temperature).",
-            "2. `fahrenheit = celsius * 9 / 5 + 32` — Apply the formula: F = C × 9/5 + 32.",
-            "   - Python calculates: 37 × 9 = 333, then 333 / 5 = 66.6, then 66.6 + 32 = 98.6",
-            "3. `print(f\"...\")` — The `f` before quotes is an **f-string** — it lets you put variables inside `{}` curly braces.",
+            "**Line 4: `a, b = b, a`** ← THE SWAP!",
+            "- Python reads BOTH right-side values first: `b` is 10, `a` is 5",
+            "- Then assigns: `a` gets 10, `b` gets 5",
+            "- Memory AFTER: `a → 10`, `b → 5`",
             "",
-            "> **Real-world:** This is how weather apps convert temperatures!"
-          ]
-        },
-        {
-          title: "Simple interest calculator",
-          code: `principal = 10000\nrate = 8\ntime = 2\n\ninterest = (principal * rate * time) / 100\ntotal = principal + interest\n\nprint(f"Interest: {interest}")\nprint(f"Total amount: {total}")`,
-          output: `Interest: 1600.0\nTotal amount: 11600.0`,
-          explanation: [
-            "**Step by step:**",
-            "1. `principal = 10000` — Amount deposited (₹10,000).",
-            "2. `rate = 8` — Interest rate (8% per year).",
-            "3. `time = 2` — Time period (2 years).",
-            "4. `interest = (principal * rate * time) / 100` — Formula: SI = P×R×T/100.",
-            "   - Calculates: (10000 × 8 × 2) / 100 = 1600",
-            "5. `total = principal + interest` — Original + interest = 11600.",
+            "**Line 5: `print(...)`** → Output: `After: 10 5`",
             "",
-            "> **Real-world:** Banks use this formula to calculate interest on fixed deposits!"
-          ]
-        },
-        {
-          title: "Rectangle area and perimeter",
-          code: `length = 10\nwidth = 5\n\narea = length * width\nperimeter = 2 * (length + width)\n\nprint(f"Area: {area}")\nprint(f"Perimeter: {perimeter}")`,
-          output: `Area: 50\nPerimeter: 30`,
-          explanation: [
-            "**Step by step:**",
-            "1. Store dimensions: length = 10, width = 5.",
-            "2. `area = length * width` — Area formula: 10 × 5 = 50.",
-            "3. `perimeter = 2 * (length + width)` — Perimeter formula: 2 × (10 + 5) = 30.",
-            "   - The parentheses `()` make Python add first, then multiply.",
-            "",
-            "> **Real-world:** This is how interior designers calculate room sizes and wall lengths!"
-          ]
-        },
-        {
-          title: "Student report card",
-          code: `name = "Meera"\nmath = 85\nscience = 92\nenglish = 78\n\ntotal = math + science + english\naverage = total / 3\n\nprint(f"Student: {name}")\nprint(f"Total: {total}/300")\nprint(f"Average: {average:.1f}%")`,
-          output: `Student: Meera\nTotal: 255/300\nAverage: 85.0%`,
-          explanation: [
-            "**Step by step:**",
-            "1. Store the student name and three subject marks.",
-            "2. `total = math + science + english` — Adds all three: 85 + 92 + 78 = 255.",
-            "3. `average = total / 3` — Divides total by number of subjects: 255 / 3 = 85.0.",
-            "4. `{average:.1f}` — The `.1f` means show only 1 decimal place.",
-            "",
-            "> **Real-world:** This is how school management systems calculate student grades!"
-          ]
-        },
-        {
-          title: "Shopping cart total with tax",
-          code: `item1 = 499\nitem2 = 299\nitem3 = 799\n\nsubtotal = item1 + item2 + item3\ntax = subtotal * 0.18\ntotal = subtotal + tax\n\nprint(f"Subtotal: {subtotal}")\nprint(f"Tax (18%): {tax:.2f}")\nprint(f"Total: {total:.2f}")`,
-          output: `Subtotal: 1597\nTax (18%): 287.46\nTotal: 1884.46`,
-          explanation: [
-            "**Step by step:**",
-            "1. Three items: ₹499, ₹299, ₹799.",
-            "2. `subtotal = item1 + item2 + item3` — Total before tax: 1597.",
-            "3. `tax = subtotal * 0.18` — 18% GST: 1597 × 0.18 = 287.46.",
-            "4. `total = subtotal + tax` — Final bill: 1597 + 287.46 = 1884.46.",
-            "5. `:.2f` — Shows exactly 2 decimal places (like money).",
-            "",
-            "> **Real-world:** This is exactly how e-commerce apps (Amazon, Flipkart) calculate your cart total!"
+            "## 🏠 Analogy",
+            "Imagine two cups — Cup A has tea, Cup B has coffee. You pick up BOTH cups at the same time, then put them in each other's place. That's what Python does!"
           ]
         }
-      ]
-    },
-
-    {
-      title: "Python Comments",
-      badge: "Syntax",
-      notes: [
-        "**Comments** are notes you write for yourself (or other programmers). Python **ignores** them completely.",
-        "- Single-line comment: starts with `#`",
-        "- Multi-line: use `#` on each line",
-        "> **Why use comments?** To explain WHY your code does something. Future-you (or your teammate) will thank you!"
       ],
-      examples: [
+
+      mistakes: [
         {
-          title: "Single-line comment",
-          code: `# This calculates the area of a circle\nradius = 7\narea = 3.14 * radius * radius\nprint(area)`,
-          output: `153.86`,
-          explanation: [
-            "**Step by step:**",
-            "1. `# This calculates...` — This line is a **comment**. Python skips it entirely.",
-            "2. `radius = 7` — Stores the radius.",
-            "3. `area = 3.14 * radius * radius` — Calculates π × r² = 3.14 × 7 × 7 = 153.86.",
-            "",
-            "> The `#` symbol tells Python: 'Ignore everything after me on this line.' Use it to explain your code!"
-          ]
+          wrong: `Print("Hello")`,
+          right: `print("Hello")`,
+          error: `NameError: name 'Print' is not defined`,
+          explanation: "Python is **case-sensitive**. `Print` (capital P) is NOT the same as `print` (lowercase p). Always use lowercase `print`."
         },
         {
-          title: "Inline comment",
-          code: `price = 100  # price in rupees\ntax = 18     # GST percentage\nfinal = price + (price * tax / 100)\nprint(final)`,
-          output: `118.0`,
-          explanation: [
-            "**Step by step:**",
-            "- Comments after code on the same line are called **inline comments**.",
-            "- `price = 100  # price in rupees` — The code `price = 100` runs; the comment explains what it means.",
-            "- This helps anyone reading your code understand what each value represents.",
-            "",
-            "> **Best practice:** Use inline comments to explain what a value means, not what the code does (the code should be self-explanatory)."
-          ]
+          wrong: `print("Hello)`,
+          right: `print("Hello")`,
+          error: `SyntaxError: unterminated string literal`,
+          explanation: "Every opening quote `\"` MUST have a closing quote `\"`. If you forget the closing quote, Python gets confused — it doesn't know where the text ends."
+        },
+        {
+          wrong: `print "Hello"`,
+          right: `print("Hello")`,
+          error: `SyntaxError: Missing parentheses in call to 'print'`,
+          explanation: "In Python 3, `print` is a **function** and requires parentheses `()`. The old Python 2 style `print \"Hello\"` doesn't work anymore."
         }
-      ]
-    },
+      ],
 
-    {
-      title: "Running Python & the REPL",
-      badge: "Setup",
-      notes: [
-        "Two ways to run Python:",
-        "- **Script mode** — Write code in a file (like `hello.py`) and run it.",
-        "- **Interactive mode (REPL)** — Type code and see results instantly.",
+      interview: [
+        { q: "What is Python?", a: "Python is a high-level, interpreted, general-purpose programming language created by Guido van Rossum. It's known for its simple, readable syntax." },
+        { q: "Is Python compiled or interpreted?", a: "Python is **interpreted** — it executes code line by line without a separate compilation step. This makes development faster but execution slightly slower than compiled languages like C." },
+        { q: "Why is Python popular?", a: "Python is popular because: (1) Easy to learn, (2) Large standard library, (3) Used in AI/ML, web, automation, (4) Huge community support, (5) Free and open source." },
+        { q: "Name 5 applications of Python", a: "1. Web development (Django, Flask)\n2. Data Science (Pandas, NumPy)\n3. Machine Learning (TensorFlow, PyTorch)\n4. Automation/Scripting\n5. Game development" }
+      ],
+
+      practice: [
+        { problem: "Write a program to print your name, age, and city.", difficulty: "Easy", hint: "Use three print() statements" },
+        { problem: "Write a program to calculate the area of a rectangle (length=10, width=5).", difficulty: "Easy", hint: "Area = length × width" },
+        { problem: "Write a program that prints the sum of 45 and 67.", difficulty: "Easy", hint: "Use print(45 + 67)" },
+        { problem: "Store your marks in 3 subjects in variables, calculate total and average, print all.", difficulty: "Medium", hint: "average = total / 3" },
+        { problem: "Write a program to convert 100 degrees Celsius to Fahrenheit.", difficulty: "Medium", hint: "F = C × 9/5 + 32" },
+        { problem: "Write a program to calculate simple interest (P=5000, R=7, T=3).", difficulty: "Medium", hint: "SI = (P × R × T) / 100" },
+        { problem: "Create a mini billing program: 3 items with prices, calculate subtotal, 18% GST, and total.", difficulty: "Hard", hint: "tax = subtotal * 0.18; total = subtotal + tax" },
+        { problem: "Swap two variables WITHOUT using a temporary variable.", difficulty: "Company", hint: "Python allows: a, b = b, a" }
+      ],
+
+      revision: [
+        "**Key Points to Remember:**",
+        "1. Python runs code **top to bottom**, one line at a time.",
+        "2. `print()` displays output on screen — always use parentheses and quotes for text.",
+        "3. Variables store data — create them with `name = value`.",
+        "4. Python is **case-sensitive** — `print` works, `Print` does NOT.",
+        "5. Math operators: `+` add, `-` subtract, `*` multiply, `/` divide.",
+        "6. Every opening quote/bracket MUST have a matching closing one.",
         "",
-        "> **Best for beginners:** Use the **Workspace** in this app! It's like having Python installed on your phone/laptop without actually installing anything."
-      ],
-      examples: [
-        {
-          title: "Run a Python file",
-          code: `# Save this as hello.py\n# Then run: python hello.py\n\nprint("Hello from my first file!")\nprint("I am running Python!")`,
-          output: `Hello from my first file!\nI am running Python!`,
-          explanation: [
-            "**How to run a Python file:**",
-            "1. Open a text editor (Notepad, VS Code, etc.).",
-            "2. Type your Python code.",
-            "3. Save it with a `.py` extension (like `hello.py`).",
-            "4. Open a terminal/command prompt.",
-            "5. Type `python hello.py` and press Enter.",
-            "",
-            "> **Or just use the Workspace in this app!** Click ▶ Run on any example to execute it instantly."
-          ]
-        }
-      ]
-    },
-
-    {
-      title: "Keywords & Identifiers",
-      badge: "Syntax",
-      notes: [
-        "**Keywords** = words Python has already reserved (you can't use them as variable names). Example: `if`, `for`, `while`, `True`, `False`.",
-        "**Identifiers** = names YOU choose for variables, functions, etc.",
-        "",
-        "**Rules for naming:**",
-        "- Can use letters, numbers, underscores (`_`)",
-        "- Cannot start with a number",
-        "- Cannot use keywords",
-        "- Case-sensitive (`age` and `Age` are different)"
-      ],
-      examples: [
-        {
-          title: "Valid variable names",
-          code: `student_name = "Ravi"\nage2 = 20\n_total = 500\nMAX_SPEED = 120\n\nprint(student_name, age2, _total, MAX_SPEED)`,
-          output: `Ravi 20 500 120`,
-          explanation: [
-            "**Why these are valid:**",
-            "- `student_name` — letters and underscore ✓",
-            "- `age2` — letters and numbers (doesn't START with a number) ✓",
-            "- `_total` — can start with underscore ✓",
-            "- `MAX_SPEED` — ALL CAPS is convention for constants (values that won't change) ✓",
-            "",
-            "**Invalid examples:** `2name` (starts with number), `for` (keyword), `my-name` (hyphen not allowed)."
-          ]
-        },
-        {
-          title: "Case sensitivity matters",
-          code: `name = "Arjun"\nName = "Sara"\nNAME = "Code Origin.AI"\n\nprint(name)\nprint(Name)\nprint(NAME)`,
-          output: `Arjun\nSara\nCode Origin.AI`,
-          explanation: [
-            "**Key point:** Python treats `name`, `Name`, and `NAME` as THREE DIFFERENT variables!",
-            "",
-            "- `name` (all lowercase) — standard for regular variables.",
-            "- `Name` (PascalCase) — typically used for class names.",
-            "- `NAME` (ALL CAPS) — convention for constants.",
-            "",
-            "> **Be careful!** If you write `Name` but meant `name`, Python won't give an error — it'll just use the wrong variable!"
-          ]
-        }
+        "**Best Practices:**",
+        "- Use meaningful variable names (`student_name` not `x`)",
+        "- Add comments (`#`) to explain complex code",
+        "- Test your code frequently — run it after every few lines"
       ]
     }
   ]

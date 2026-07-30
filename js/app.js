@@ -181,13 +181,104 @@
       (con.badge ? ' <span class="concept-badge">' + escapeHtml(con.badge) + "</span>" : "") +
       ' <a class="anchor" href="#/module/' + con._modId + "/" + s + '" title="Link">#</a>';
     wrap.appendChild(title);
+
+    /* --- STEP 1: Introduction (What / Why / Where) --- */
+    if (con.introduction) {
+      var intro = el("div", "teach-section teach-intro");
+      intro.innerHTML = '<div class="teach-label"><span class="teach-icon">📖</span> Step 1: Introduction</div>' +
+        '<div class="teach-content">' + renderNotes(con.introduction) + '</div>';
+      wrap.appendChild(intro);
+    }
+
+    /* --- STEP 2: Real-Life Analogy --- */
+    if (con.analogy) {
+      var anl = el("div", "teach-section teach-analogy");
+      anl.innerHTML = '<div class="teach-label"><span class="teach-icon">🏠</span> Step 2: Real-Life Analogy</div>' +
+        '<div class="teach-content">' + renderNotes(con.analogy) + '</div>';
+      wrap.appendChild(anl);
+    }
+
+    /* --- STEP 3: Visual / Diagram --- */
+    if (con.diagram) {
+      var diag = el("div", "teach-section teach-diagram");
+      diag.innerHTML = '<div class="teach-label"><span class="teach-icon">📊</span> Step 3: Visual Explanation</div>' +
+        '<div class="teach-content"><pre class="diagram-box">' + escapeHtml(typeof con.diagram === 'string' ? con.diagram : con.diagram.join('\n')) + '</pre></div>';
+      wrap.appendChild(diag);
+    }
+
+    /* --- STEP 4: Syntax --- */
+    if (con.syntax) {
+      var syn = el("div", "teach-section teach-syntax");
+      syn.innerHTML = '<div class="teach-label"><span class="teach-icon">⌨️</span> Step 4: Syntax</div>' +
+        '<div class="teach-content">' + renderNotes(con.syntax) + '</div>';
+      wrap.appendChild(syn);
+    }
+
+    /* --- Original notes (concept explanation) --- */
     if (con.notes) wrap.appendChild(el("div", "concept-notes", renderNotes(con.notes)));
+
+    /* --- STEPS 5-7: Examples with execution trace --- */
     if (con.examples && con.examples.length) {
       var head = el("div", "examples-head");
-      head.innerHTML = T("examplesHead") + ' <span class="ex-count">' + con.examples.length + "</span>";
+      head.innerHTML = '<span class="teach-icon">💡</span> Steps 5-7: ' + T("examplesHead") + ' & Execution Trace <span class="ex-count">' + con.examples.length + "</span>";
       wrap.appendChild(head);
       con.examples.forEach(function (ex, idx) { wrap.appendChild(renderExample(ex, idx + 1)); });
     }
+
+    /* --- STEP 8: Common Mistakes --- */
+    if (con.mistakes && con.mistakes.length) {
+      var mist = el("div", "teach-section teach-mistakes");
+      var mistHtml = '<div class="teach-label"><span class="teach-icon">⚠️</span> Step 8: Common Mistakes</div><div class="teach-content">';
+      con.mistakes.forEach(function (m) {
+        mistHtml += '<div class="mistake-card">' +
+          '<div class="mistake-wrong"><div class="mistake-tag">❌ Wrong</div><pre class="mistake-code">' + highlight(m.wrong) + '</pre>' +
+          (m.error ? '<div class="mistake-error">' + escapeHtml(m.error) + '</div>' : '') + '</div>' +
+          '<div class="mistake-right"><div class="mistake-tag">✅ Correct</div><pre class="mistake-code">' + highlight(m.right) + '</pre></div>' +
+          '<div class="mistake-why">' + renderNotes(m.explanation) + '</div></div>';
+      });
+      mistHtml += '</div>';
+      mist.innerHTML = mistHtml;
+      wrap.appendChild(mist);
+    }
+
+    /* --- STEP 9: Interview Questions --- */
+    if (con.interview && con.interview.length) {
+      var intv = el("div", "teach-section teach-interview");
+      var intvHtml = '<div class="teach-label"><span class="teach-icon">🎯</span> Step 9: Interview Questions</div><div class="teach-content">';
+      con.interview.forEach(function (qa, i) {
+        intvHtml += '<div class="qa-card"><div class="qa-q"><span class="qa-num">Q' + (i+1) + '</span>' + escapeHtml(qa.q) + '</div>' +
+          '<div class="qa-a"><strong>Answer:</strong> ' + renderNotes(qa.a) + '</div></div>';
+      });
+      intvHtml += '</div>';
+      intv.innerHTML = intvHtml;
+      wrap.appendChild(intv);
+    }
+
+    /* --- STEPS 10-11: Practice Problems --- */
+    if (con.practice && con.practice.length) {
+      var prac = el("div", "teach-section teach-practice");
+      var pracHtml = '<div class="teach-label"><span class="teach-icon">🏋️</span> Steps 10-11: Practice Problems</div><div class="teach-content">';
+      con.practice.forEach(function (p, i) {
+        var diff = p.difficulty || "Easy";
+        pracHtml += '<div class="practice-card practice-' + diff.toLowerCase() + '">' +
+          '<div class="practice-head"><span class="practice-num">#' + (i+1) + '</span><span class="practice-diff">' + diff + '</span></div>' +
+          '<div class="practice-desc">' + escapeHtml(p.problem) + '</div>' +
+          (p.hint ? '<div class="practice-hint">💡 Hint: ' + escapeHtml(p.hint) + '</div>' : '') +
+          '</div>';
+      });
+      pracHtml += '</div>';
+      prac.innerHTML = pracHtml;
+      wrap.appendChild(prac);
+    }
+
+    /* --- STEP 12: Revision Summary --- */
+    if (con.revision) {
+      var rev = el("div", "teach-section teach-revision");
+      rev.innerHTML = '<div class="teach-label"><span class="teach-icon">📋</span> Step 12: Quick Revision</div>' +
+        '<div class="teach-content">' + renderNotes(con.revision) + '</div>';
+      wrap.appendChild(rev);
+    }
+
     return wrap;
   }
 

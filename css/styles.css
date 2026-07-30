@@ -480,6 +480,59 @@ body::after {
 /* Sidebar active indicator pulse */
 .nav-mod.active .nav-num { animation: pulse 2s ease-in-out infinite; }
 
+/* Hero badge shine effect */
+.hero-badge { position: relative; overflow: hidden; }
+.hero-badge::after {
+  content: ""; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+  animation: badgeShine 3.5s ease-in-out infinite;
+}
+@keyframes badgeShine { 0% { left: -100%; } 50%, 100% { left: 200%; } }
+
+/* Module card number glow on hover */
+.mod-card:hover .mc-num { box-shadow: 0 0 16px rgba(124,140,255,.6); }
+
+/* Animated gradient border on featured cards */
+@keyframes borderGlow { 0%,100% { border-color: var(--border); } 50% { border-color: var(--accent); } }
+
+/* Concept title underline animation */
+.concept-title { position: relative; }
+.concept-title::after {
+  content: ""; position: absolute; bottom: -6px; left: 0; width: 0; height: 3px;
+  background: var(--grad-brand); border-radius: 3px; transition: width .5s cubic-bezier(.16,1,.3,1);
+}
+.concept.visible .concept-title::after { width: 60px; }
+
+/* Teaching section entrance with slide */
+.teach-section { transition: transform .3s ease, box-shadow .3s ease; }
+.teach-section:hover { transform: translateX(4px); box-shadow: var(--shadow-sm); }
+
+/* Smooth number counter animation */
+@keyframes tickUp { from { opacity: 0; transform: translateY(8px) scale(0.9); } to { opacity: 1; transform: none; } }
+.hero-badge { animation: fadeUp .5s ease both, tickUp .5s ease; }
+
+/* Floating action feel for workspace/AI buttons */
+.ws-link, .ai-link { position: relative; overflow: hidden; }
+.ws-link::before, .ai-link::before {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 0; height: 0;
+  background: rgba(255,255,255,.2); border-radius: 50%; transform: translate(-50%,-50%);
+  transition: width .4s ease, height .4s ease;
+}
+.ws-link:hover::before, .ai-link:hover::before { width: 200%; height: 200%; }
+
+/* Code block top accent line animation */
+.example-head { position: relative; }
+.example:hover .example-head::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--grad-brand); animation: fadeIn .3s ease;
+}
+
+/* Practice difficulty badge subtle bounce */
+.practice-card:hover .practice-diff { animation: wiggle .4s ease; }
+
+/* Smooth theme transition */
+* { transition: border-color .3s ease; }
+
 /* ---------- Top bar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 60;

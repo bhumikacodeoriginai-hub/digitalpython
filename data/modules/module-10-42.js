@@ -44,13 +44,103 @@ window.DP.registerModule({
   concepts: [
     {
       title: "try / except / else / finally",
-      badge: "Errors",
+      badge: "Errors · 16 examples",
+      introduction: [
+        "**What is it?** Exception handling is how Python deals with ERRORS without crashing your program.",
+        "**Why do we need it?** Without it, ONE error stops your whole program. With it, you catch the error and keep running.",
+        "**Where is it used?** Everywhere in real apps — reading files that might not exist, network requests that might fail, user input that might be wrong, database connections, etc."
+      ],
+      analogy: [
+        "**Think of it like a safety net under a trapeze artist:**",
+        "- The artist performs risky tricks (your `try` code)",
+        "- If they fall (an error happens), the net catches them (`except`)",
+        "- The show continues instead of a disaster!",
+        "",
+        "**Another analogy — a car airbag:**",
+        "- You drive normally (try block)",
+        "- If there's a crash (error), the airbag deploys (except block)",
+        "- You survive and can continue"
+      ],
+      diagram: [
+        "┌──────────────────────────────────────────┐",
+        "│      HOW try / except WORKS               │",
+        "├──────────────────────────────────────────┤",
+        "│                                          │",
+        "│   try:                                   │",
+        "│       risky_code()  ──┐                  │",
+        "│                       │                  │",
+        "│              Error?   │                  │",
+        "│          ┌────No───────┴──Yes───┐        │",
+        "│          ▼                      ▼        │",
+        "│     continue              except block   │",
+        "│     normally              (handle error) │",
+        "│          │                      │        │",
+        "│          └──────┬───────────────┘        │",
+        "│                 ▼                        │",
+        "│            finally (always runs)          │",
+        "└──────────────────────────────────────────┘"
+      ],
+      syntax: [
+        "**Basic structure:**",
+        "```",
+        "try:",
+        "    # code that might fail",
+        "except ErrorType:",
+        "    # what to do if it fails",
+        "else:",
+        "    # runs if NO error happened",
+        "finally:",
+        "    # ALWAYS runs (cleanup)",
+        "```",
+        "- `try` — required, contains risky code",
+        "- `except` — catches errors",
+        "- `else` — optional, runs on success",
+        "- `finally` — optional, always runs"
+      ],
       notes: ["Wrap risky code in `try`. `except` catches errors, `else` runs on success, `finally` always runs (cleanup)."],
       examples: [
-        { title: "Catch an error", code: `try:\n    x = 10 / 0\nexcept ZeroDivisionError:\n    print("Cannot divide by zero")`, output: `Cannot divide by zero` },
-        { title: "Catch specific exception", code: `try:\n    int("abc")\nexcept ValueError as e:\n    print("Bad value:", e)`, output: `Bad value: invalid literal for int() with base 10: 'abc'` },
+        { title: "Catch a divide-by-zero error", code: `try:\n    x = 10 / 0\nexcept ZeroDivisionError:\n    print("Cannot divide by zero")`, output: `Cannot divide by zero` },
+        { title: "Catch invalid conversion", code: `try:\n    int("abc")\nexcept ValueError as e:\n    print("Bad value:", e)`, output: `Bad value: invalid literal for int() with base 10: 'abc'` },
         { title: "else and finally", code: `try:\n    n = int("5")\nexcept ValueError:\n    print("failed")\nelse:\n    print("parsed", n)\nfinally:\n    print("done")`, output: `parsed 5\ndone` },
-        { title: "Multiple exceptions", code: `try:\n    data = [1]\n    print(data[5])\nexcept (IndexError, KeyError):\n    print("Lookup failed")`, output: `Lookup failed` }
+        { title: "Catch multiple exception types", code: `try:\n    data = [1]\n    print(data[5])\nexcept (IndexError, KeyError):\n    print("Lookup failed")`, output: `Lookup failed` },
+        { title: "Catch any exception", code: `try:\n    result = 1 / 0\nexcept Exception as e:\n    print(f"Error occurred: {type(e).__name__}")`, output: `Error occurred: ZeroDivisionError` },
+        { title: "Safe user input conversion", code: `def safe_int(text):\n    try:\n        return int(text)\n    except ValueError:\n        return 0\n\nprint(safe_int("42"))\nprint(safe_int("hello"))`, output: `42\n0` },
+        { title: "Handle KeyError in dict", code: `data = {"name": "Ravi"}\ntry:\n    print(data["age"])\nexcept KeyError:\n    print("Key not found")`, output: `Key not found` },
+        { title: "Handle file not found", code: `try:\n    with open("missing.txt") as f:\n        print(f.read())\nexcept FileNotFoundError:\n    print("File does not exist")`, output: `File does not exist` },
+        { title: "Retry logic with exceptions", code: `attempts = ["abc", "12x", "50"]\nfor a in attempts:\n    try:\n        print("Success:", int(a))\n        break\n    except ValueError:\n        print(f"'{a}' failed, retrying...")`, output: `'abc' failed, retrying...\n'12x' failed, retrying...\nSuccess: 50` },
+        { title: "TypeError handling", code: `try:\n    result = "5" + 5\nexcept TypeError as e:\n    print("Type mismatch!")`, output: `Type mismatch!` },
+        { title: "Access exception details", code: `try:\n    x = [1, 2, 3][10]\nexcept IndexError as e:\n    print(f"Error type: {type(e).__name__}")\n    print(f"Message: {e}")`, output: `Error type: IndexError\nMessage: list index out of range` },
+        { title: "Nested try-except", code: `try:\n    try:\n        x = 1 / 0\n    except ZeroDivisionError:\n        print("Inner caught it")\n        raise ValueError("New error")\nexcept ValueError as e:\n    print("Outer caught:", e)`, output: `Inner caught it\nOuter caught: New error` },
+        { title: "finally for cleanup", code: `def process():\n    try:\n        print("Processing...")\n        return "done"\n    finally:\n        print("Cleanup always runs")\n\nprint(process())`, output: `Processing...\nCleanup always runs\ndone` },
+        { title: "Division calculator (safe)", code: `def divide(a, b):\n    try:\n        return a / b\n    except ZeroDivisionError:\n        return "Cannot divide by zero"\n\nprint(divide(10, 2))\nprint(divide(10, 0))`, output: `5.0\nCannot divide by zero` },
+        { title: "Validate age input", code: `def validate_age(text):\n    try:\n        age = int(text)\n        if age < 0:\n            return "Age cannot be negative"\n        return f"Age: {age}"\n    except ValueError:\n        return "Please enter a number"\n\nprint(validate_age("25"))\nprint(validate_age("-5"))\nprint(validate_age("abc"))`, output: `Age: 25\nAge cannot be negative\nPlease enter a number` },
+        { title: "Bank withdrawal with checks", code: `def withdraw(balance, amount):\n    try:\n        if amount > balance:\n            raise ValueError("Insufficient funds")\n        return balance - amount\n    except ValueError as e:\n        return f"Error: {e}"\n\nprint(withdraw(1000, 300))\nprint(withdraw(1000, 2000))`, output: `700\nError: Insufficient funds` }
+      ],
+      mistakes: [
+        { wrong: `try:\n    x = 1/0\nexcept:\n    pass`, right: `try:\n    x = 1/0\nexcept ZeroDivisionError as e:\n    print(e)`, error: `Bad practice: silently swallows ALL errors`, explanation: "Never use bare `except:` with `pass` — it hides bugs! Always catch SPECIFIC exceptions and at least log them." },
+        { wrong: `try:\n    risky()\nexcept Exception:\n    handle()\nexcept ValueError:\n    handle_value()`, right: `try:\n    risky()\nexcept ValueError:\n    handle_value()\nexcept Exception:\n    handle()`, error: `ValueError block is unreachable`, explanation: "Put SPECIFIC exceptions FIRST, general ones LAST. `Exception` catches everything, so anything after it never runs." }
+      ],
+      interview: [
+        { q: "What is the difference between except Exception and bare except?", a: "`except Exception` catches all standard exceptions but lets system-exit signals (like KeyboardInterrupt) through. Bare `except:` catches literally EVERYTHING including Ctrl+C — this is dangerous and not recommended." },
+        { q: "When does the finally block run?", a: "`finally` ALWAYS runs — whether an exception occurred or not, even if there's a `return` statement. It's used for cleanup like closing files or database connections." },
+        { q: "What is the difference between else and finally?", a: "`else` runs ONLY if no exception occurred in the try block. `finally` runs ALWAYS, regardless of exceptions." }
+      ],
+      practice: [
+        { problem: "Write a function that safely converts a string to a float, returning 0.0 on failure.", difficulty: "Easy", hint: "try: float(x) except ValueError: return 0.0" },
+        { problem: "Create a calculator that handles division by zero gracefully.", difficulty: "Easy", hint: "Catch ZeroDivisionError" },
+        { problem: "Write a program that keeps asking for a number until the user enters a valid one.", difficulty: "Medium", hint: "Use a while loop with try-except" },
+        { problem: "Build a function that reads a file and handles the case when it doesn't exist.", difficulty: "Medium", hint: "Catch FileNotFoundError" },
+        { problem: "Create a custom exception for an e-commerce 'OutOfStock' error and use it.", difficulty: "Hard", hint: "class OutOfStock(Exception): pass" }
+      ],
+      revision: [
+        "**Key Points:**",
+        "1. `try` holds risky code that might fail",
+        "2. `except` catches and handles errors",
+        "3. `else` runs only when NO error occurs",
+        "4. `finally` ALWAYS runs (used for cleanup)",
+        "5. Catch SPECIFIC exceptions, not bare `except:`",
+        "6. Put specific exceptions before general ones",
+        "7. Common exceptions: ValueError, TypeError, KeyError, IndexError, ZeroDivisionError, FileNotFoundError"
       ]
     },
     {

@@ -498,6 +498,211 @@
     content.focus(); window.scrollTo(0, 0);
   }
 
+  /* ---------- AI Explain Page ---------- */
+  function renderAIExplain() {
+    var content = $("#content"); content.innerHTML = "";
+    var page = el("div", "ai-explain-page");
+
+    // Header
+    page.innerHTML = '<div class="ai-header">' +
+      '<h1><span class="ai-icon">🤖</span> AI Python Teacher</h1>' +
+      '<p class="ai-subtitle">Select a topic and language — get detailed corporate-level explanation instantly</p>' +
+      '</div>';
+
+    // Controls
+    var controls = el("div", "ai-controls");
+
+    // Topic selector
+    var topicSelect = el("select", "ai-select"); topicSelect.id = "aiTopic";
+    topicSelect.innerHTML = '<option value="">— Select a Topic —</option>';
+    MODULES.forEach(function (mod) {
+      var group = el("optgroup");
+      group.label = "M" + mod.id + ": " + modTitle(mod);
+      (mod.concepts || []).forEach(function (con) {
+        var opt = el("option");
+        opt.value = mod.id + "|" + con.title;
+        opt.textContent = con.title;
+        group.appendChild(opt);
+      });
+      topicSelect.appendChild(group);
+    });
+    controls.appendChild(topicSelect);
+
+    // Language selector
+    var langSelect = el("select", "ai-select"); langSelect.id = "aiLang";
+    window.DPI18N.languages.forEach(function (l) {
+      var opt = el("option");
+      opt.value = l.code;
+      opt.textContent = l.flag + " " + l.label;
+      if (l.code === window.DPI18N.get()) opt.selected = true;
+      langSelect.appendChild(opt);
+    });
+    controls.appendChild(langSelect);
+
+    // Explain button
+    var explainBtn = el("button", "ai-btn", "🧠 Explain This Topic");
+    explainBtn.id = "aiExplainBtn";
+    controls.appendChild(explainBtn);
+    page.appendChild(controls);
+
+    // Result area
+    var resultArea = el("div", "ai-result"); resultArea.id = "aiResult";
+    resultArea.innerHTML = '<div class="ai-placeholder"><div class="ai-placeholder-icon">📚</div><p>Select a topic above and click "Explain" to get a detailed, step-by-step explanation in your chosen language.</p><p class="ai-placeholder-sub">The explanation includes: Introduction, Real-life analogy, Visual diagram, Syntax breakdown, Examples with execution trace, Common mistakes, and Interview questions.</p></div>';
+    page.appendChild(resultArea);
+
+    content.appendChild(page);
+
+    // Event handler
+    explainBtn.addEventListener("click", function () {
+      var topicVal = topicSelect.value;
+      var langCode = langSelect.value;
+      if (!topicVal) { resultArea.innerHTML = '<div class="ai-error">⚠️ Please select a topic first!</div>'; return; }
+
+      var parts = topicVal.split("|");
+      var modId = parseInt(parts[0]);
+      var conTitle = parts[1];
+      var mod = MODULE_BY_ID[modId];
+      if (!mod) return;
+
+      var concept = null;
+      (mod.concepts || []).forEach(function (c) { if (c.title === conTitle) concept = c; });
+      if (!concept) return;
+
+      // Generate the full explanation
+      resultArea.innerHTML = '<div class="ai-loading"><div class="ai-loading-spinner"></div><p>Generating detailed explanation...</p></div>';
+
+      setTimeout(function () {
+        var html = generateAIExplanation(concept, mod, langCode);
+        resultArea.innerHTML = html;
+        resultArea.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 600);
+    });
+
+    highlightSidebar(null, null);
+    document.title = "AI Python Teacher | " + T("heroTitle");
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  function generateAIExplanation(concept, mod, langCode) {
+    var html = '<div class="ai-explanation">';
+
+    // Title
+    html += '<div class="ai-exp-header"><h2>' + escapeHtml(concept.title) + '</h2>' +
+      '<span class="ai-exp-module">Module ' + mod.id + ': ' + escapeHtml(modTitle(mod)) + '</span></div>';
+
+    // Step 1: Introduction
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">1</span><span class="ai-step-title">📖 Introduction — What is it & Why?</span></div><div class="ai-step-body">';
+    if (concept.introduction) {
+      html += renderNotes(concept.introduction);
+    } else {
+      html += '<p><strong>What is ' + escapeHtml(concept.title) + '?</strong></p>';
+      html += renderNotes(concept.notes || ["This is a fundamental Python concept that every developer must understand."]);
+      html += '<p><strong>Why is it important?</strong> This concept is used in real-world applications including web development, data science, automation, and enterprise software.</p>';
+      html += '<p><strong>Where companies use it:</strong> Google, Amazon, Microsoft, Flipkart, and thousands of startups use this daily.</p>';
+    }
+    html += '</div></div>';
+
+    // Step 2: Analogy
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">2</span><span class="ai-step-title">🏠 Real-Life Analogy</span></div><div class="ai-step-body">';
+    if (concept.analogy) {
+      html += renderNotes(concept.analogy);
+    } else {
+      html += '<p><strong>Think of it like this:</strong></p>';
+      html += '<p>Imagine you are in a <strong>school classroom</strong>. The teacher gives instructions step by step, and students follow them one by one. That is exactly how Python works — it reads your code line by line from top to bottom and follows each instruction.</p>';
+      html += '<p>Just like a <strong>recipe book</strong> has step 1, step 2, step 3... your Python program has line 1, line 2, line 3... and Python follows them in order.</p>';
+    }
+    html += '</div></div>';
+
+    // Step 3: Visual
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">3</span><span class="ai-step-title">📊 Visual Explanation</span></div><div class="ai-step-body">';
+    if (concept.diagram) {
+      html += '<pre class="diagram-box">' + escapeHtml(typeof concept.diagram === 'string' ? concept.diagram : concept.diagram.join('\n')) + '</pre>';
+    } else {
+      html += '<pre class="diagram-box">┌────────────────────────────────────┐\n│  ' + escapeHtml(concept.title).slice(0,30) + '            │\n├────────────────────────────────────┤\n│                                    │\n│   Input → Process → Output         │\n│                                    │\n│   Your Code → Python Engine →      │\n│              → Result on Screen     │\n│                                    │\n└────────────────────────────────────┘</pre>';
+    }
+    html += '</div></div>';
+
+    // Step 4: Syntax
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">4</span><span class="ai-step-title">⌨️ Syntax Breakdown</span></div><div class="ai-step-body">';
+    if (concept.syntax) {
+      html += renderNotes(concept.syntax);
+    } else if (concept.examples && concept.examples.length) {
+      html += '<p><strong>Basic syntax:</strong></p>';
+      html += '<pre class="diagram-box">' + escapeHtml(concept.examples[0].code) + '</pre>';
+      html += '<p>Every symbol matters in Python — indentation (spaces at the beginning), colons, brackets, and quotes all have specific meaning.</p>';
+    }
+    html += '</div></div>';
+
+    // Step 5-7: Examples with traces
+    if (concept.examples && concept.examples.length) {
+      html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">5-7</span><span class="ai-step-title">💡 Examples with Execution Trace</span></div><div class="ai-step-body">';
+      var shown = Math.min(concept.examples.length, 5);
+      for (var i = 0; i < shown; i++) {
+        var ex = concept.examples[i];
+        html += '<div class="ai-example"><div class="ai-example-title">' + escapeHtml(ex.title || 'Example ' + (i+1)) + '</div>';
+        html += '<pre class="diagram-box">' + escapeHtml(ex.code) + '</pre>';
+        if (ex.output) html += '<div class="ai-example-output">Output: ' + escapeHtml(ex.output) + '</div>';
+        // Auto explanation
+        var expl = ex.explanation || (window.DPExplainer ? window.DPExplainer.explain(ex.code, ex.title) : null);
+        if (expl) {
+          html += '<div class="ai-example-trace">' + renderNotes(expl) + '</div>';
+        }
+        html += '</div>';
+      }
+      html += '</div></div>';
+    }
+
+    // Step 8: Mistakes
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">8</span><span class="ai-step-title">⚠️ Common Mistakes</span></div><div class="ai-step-body">';
+    if (concept.mistakes && concept.mistakes.length) {
+      concept.mistakes.forEach(function (m) {
+        html += '<div class="ai-mistake"><div class="ai-mistake-wrong">❌ Wrong: <code>' + escapeHtml(m.wrong) + '</code></div>';
+        html += '<div class="ai-mistake-right">✅ Correct: <code>' + escapeHtml(m.right) + '</code></div>';
+        html += '<div class="ai-mistake-why">' + escapeHtml(m.explanation) + '</div></div>';
+      });
+    } else {
+      html += '<p><strong>Most common beginner mistakes:</strong></p><ul><li>Forgetting the colon <code>:</code> at the end of statements</li><li>Wrong indentation (Python uses spaces to define code blocks)</li><li>Mixing up <code>=</code> (assignment) and <code>==</code> (comparison)</li><li>Forgetting to close quotes or brackets</li></ul>';
+    }
+    html += '</div></div>';
+
+    // Step 9: Interview Questions
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">9</span><span class="ai-step-title">🎯 Interview Questions</span></div><div class="ai-step-body">';
+    if (concept.interview && concept.interview.length) {
+      concept.interview.forEach(function (qa, i) {
+        html += '<div class="ai-qa"><strong>Q' + (i+1) + ': ' + escapeHtml(qa.q) + '</strong><p>' + renderNotes(qa.a) + '</p></div>';
+      });
+    } else {
+      html += '<div class="ai-qa"><strong>Q1: Explain ' + escapeHtml(concept.title) + ' in simple words.</strong><p>This is a fundamental concept in Python that deals with ' + escapeHtml(concept.title.toLowerCase()) + '. It is commonly asked in interviews at all levels.</p></div>';
+      html += '<div class="ai-qa"><strong>Q2: Give a real-world use case.</strong><p>Companies use this in production applications for data processing, automation, and building scalable systems.</p></div>';
+    }
+    html += '</div></div>';
+
+    // Step 10: Practice
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">10-11</span><span class="ai-step-title">🏋️ Practice Problems</span></div><div class="ai-step-body">';
+    if (concept.practice && concept.practice.length) {
+      concept.practice.forEach(function (p, i) {
+        html += '<div class="ai-practice"><strong>#' + (i+1) + ' [' + (p.difficulty || 'Medium') + ']:</strong> ' + escapeHtml(p.problem) + (p.hint ? '<br><em>Hint: ' + escapeHtml(p.hint) + '</em>' : '') + '</div>';
+      });
+    } else {
+      html += '<div class="ai-practice"><strong>#1 [Easy]:</strong> Write a simple program using ' + escapeHtml(concept.title) + '.</div>';
+      html += '<div class="ai-practice"><strong>#2 [Medium]:</strong> Solve a real-world problem using this concept.</div>';
+      html += '<div class="ai-practice"><strong>#3 [Hard]:</strong> Combine this with other concepts to build something useful.</div>';
+    }
+    html += '</div></div>';
+
+    // Step 12: Revision
+    html += '<div class="ai-step"><div class="ai-step-head"><span class="ai-step-num">12</span><span class="ai-step-title">📋 Quick Revision</span></div><div class="ai-step-body">';
+    if (concept.revision) {
+      html += renderNotes(concept.revision);
+    } else {
+      html += '<p><strong>Remember these key points:</strong></p><ul><li>Understand the basic syntax and structure</li><li>Practice with multiple examples</li><li>Try modifying the examples to see what happens</li><li>Use the Workspace to experiment</li></ul>';
+    }
+    html += '</div></div>';
+
+    html += '</div>';
+    return html;
+  }
+
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
     else fallbackCopy(text);
@@ -542,6 +747,7 @@
   function route() {
     var hash = currentRoute();
     if (/^#\/workspace/.test(hash)) { renderWorkspace(); }
+    else if (/^#\/ai-explain/.test(hash)) { renderAIExplain(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);
       if (m) renderModule(parseInt(m[1], 10), m[2] || null);

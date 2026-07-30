@@ -1629,3 +1629,576 @@ body::after {
   .jd-cat { grid-template-columns: 1fr; }
   .review-actions { flex-direction: column; align-items: stretch; }
 }
+
+
+/* ============================================================
+   ============================================================
+   PRODUCTION UI/UX POLISH LAYER
+   Sections 1-63 of the redesign spec.
+   Additive only — existing selectors preserved.
+   ============================================================
+   ============================================================ */
+
+/* --------- (§8) Typography — responsive with clamp() --------- */
+:root {
+  /* Spacing scale */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* Radius scale */
+  --r-xs: 6px; --r-sm: 10px; --r-md: 14px; --r-lg: 18px; --r-xl: 22px;
+  --r-round: 999px;
+
+  /* (§41) Z-index scale — documented */
+  --z-base:      0;
+  --z-content:   1;
+  --z-sticky:    10;
+  --z-header:    100;
+  --z-sidebar:   200;
+  --z-scrim:     300;
+  --z-dropdown:  400;
+  --z-popover:   500;
+  --z-modal:     600;
+  --z-toast:     700;
+
+  /* Duration tokens (§22, §37) */
+  --t-fast: 120ms;
+  --t-normal: 200ms;
+  --t-slow: 320ms;
+  --t-page: 400ms;
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Type scale — clamp(min, preferred, max) */
+  --fs-display: clamp(30px, 5vw, 48px);
+  --fs-h1:      clamp(24px, 4vw, 34px);
+  --fs-h2:      clamp(19px, 3vw, 24px);
+  --fs-h3:      clamp(16px, 2vw, 18px);
+  --fs-body:    clamp(14.5px, 1.4vw, 16px);
+  --fs-small:   clamp(12px, 1.1vw, 13.5px);
+  --fs-code:    clamp(12.5px, 1.2vw, 14px);
+
+  /* Focus ring */
+  --ring-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  --ring: 0 0 0 3px var(--ring-color);
+}
+
+/* --------- (§12) iOS viewport fix — dvh with fallback --------- */
+html, body { min-height: 100vh; min-height: 100dvh; }
+
+/* --------- Global overflow discipline (§42) --------- */
+html, body { overflow-x: hidden; }
+main, .content, .concept, .example, .iv-card, .role-card, .scenario-card,
+.tomorrow-step, .sd-track, .jd-wrap, .dash-topic, .review-list, .mock-q-card,
+.engine-code-card, .engine-result { overflow-wrap: anywhere; word-break: break-word; }
+main img, main video, main iframe { max-width: 100%; height: auto; }
+
+/* --------- (§53) Reduced motion --------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::before, body::after { animation: none !important; }
+  .typing-text { animation: none !important; width: 100% !important; border-right: none !important; }
+  .hero-progress .bar { animation: none !important; width: var(--progress, 10%) !important; }
+}
+
+/* --------- (§23, §52) Focus-visible — visible ring for keyboard users --------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: inherit;
+}
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible,
+input:focus-visible, textarea:focus-visible, select:focus-visible,
+.iv-tab:focus-visible, .nav-mod:focus-visible, .nav-concept:focus-visible,
+.mod-card:focus-visible, .role-card:focus-visible, .scenario-card:focus-visible,
+.iv-card-head:focus-visible {
+  outline: none;
+  box-shadow: var(--ring), 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+input:focus, textarea:focus, select:focus { outline: none; }
+
+/* --------- Skip to content link — a11y --------- */
+.skip-to-content {
+  position: absolute; left: -9999px; top: 0;
+  padding: 12px 20px; background: var(--surface); color: var(--accent);
+  border-radius: 0 0 10px 0; z-index: var(--z-toast);
+  font-weight: 700; text-decoration: none;
+}
+.skip-to-content:focus { left: 0; box-shadow: var(--ring); }
+
+/* --------- (§40, §41, §42) Z-index / overflow enforcement --------- */
+.topbar   { z-index: var(--z-header) !important; }
+.sidebar  { z-index: var(--z-sidebar) !important; }
+.scrim    { z-index: var(--z-scrim) !important; }
+.search-results { z-index: var(--z-dropdown) !important; }
+.lang-menu { z-index: var(--z-dropdown) !important; }
+.iv-tabs { z-index: var(--z-content); position: relative; }
+
+/* --------- (§16) Topbar polish + iOS safe-area --------- */
+.topbar {
+  padding-top: max(0px, env(safe-area-inset-top));
+  height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border-bottom: 1px solid var(--border-soft);
+}
+[data-theme="dark"] .topbar { background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.icon-btn {
+  transition: background var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-normal) var(--ease-out);
+}
+.icon-btn:active { transform: scale(0.94); }
+
+/* --------- (§17) Search UI polish --------- */
+.search-wrap { position: relative; }
+.search-wrap input {
+  transition: box-shadow var(--t-normal) var(--ease-out), border-color var(--t-fast);
+}
+.search-results {
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0,0,0,.24);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  max-height: min(70vh, 500px);
+  overflow-y: auto;
+}
+.sr-item { transition: background var(--t-fast); }
+.sr-item.active { background: var(--accent-soft); }
+.sr-item mark { background: color-mix(in srgb, var(--accent) 25%, transparent); color: inherit; padding: 0 2px; border-radius: 3px; }
+.sr-empty { padding: 18px; color: var(--text-faint); text-align: center; font-size: 14px; }
+
+/* --------- (§18) Sidebar polish + mobile drawer --------- */
+.sidebar {
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  transition: transform var(--t-slow) var(--ease-out);
+}
+.nav-group { transition: background var(--t-fast); }
+.nav-mod { transition: background var(--t-fast), color var(--t-fast); }
+.nav-mod.active {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent);
+  color: var(--accent);
+  border-left: 3px solid var(--accent);
+  padding-left: calc(10px - 3px);
+}
+.nav-caret { transition: transform var(--t-normal) var(--ease-out); display: inline-block; margin-left: auto; font-size: 10px; color: var(--text-faint); }
+.nav-mod.open .nav-caret { transform: rotate(90deg); }
+.nav-concepts { max-height: 0; overflow: hidden; transition: max-height var(--t-slow) var(--ease-in-out); }
+.nav-group.open .nav-concepts { max-height: 4000px; }
+.scrim { transition: opacity var(--t-normal); }
+
+/* --------- (§19, §20) Hero polish --------- */
+.hero {
+  position: relative; overflow: hidden;
+  padding: clamp(28px, 5vw, 56px) clamp(20px, 4vw, 44px);
+  border-radius: var(--r-xl);
+  background:
+    linear-gradient(135deg, rgba(75,139,190,0.9) 0%, rgba(109,94,252,0.9) 55%, rgba(176,106,179,0.9) 100%),
+    radial-gradient(600px circle at 20% 20%, rgba(255,255,255,.14), transparent 50%);
+  color: #fff;
+  box-shadow: 0 20px 60px rgba(109,94,252,.25);
+}
+.hero::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20% 30%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1.5px 1.5px at 80% 40%, rgba(255,255,255,.35), transparent);
+  animation: heroTwinkle 6s ease-in-out infinite alternate;
+}
+@keyframes heroTwinkle { 0% { opacity: .5; } 100% { opacity: 1; } }
+.hero h1 { font-size: var(--fs-display); letter-spacing: -0.02em; font-weight: 800; line-height: 1.05; margin-bottom: 12px; }
+.hero p  { font-size: clamp(14.5px, 1.6vw, 17px); opacity: 0.92; max-width: 62ch; }
+.hero-badges { flex-wrap: wrap; }
+.hero-badge {
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.24);
+}
+
+/* --------- (§21) Unified card system --------- */
+.mod-card, .role-card, .scenario-card, .iv-card, .sd-track, .tomorrow-step,
+.mock-config, .mock-history, .mock-q-card, .mock-answer, .engine-code-card,
+.engine-result, .adaptive-info, .adaptive-preview, .mock-topics, .mock-missed,
+.dash-stat, .dash-readiness, .dash-topics, .dash-ws, .iv-plan-card,
+.iv-guide-card, .iv-round-card, .review-empty, .jd-wrap, .jd-role-card,
+.scenario-context-card, .scenario-prompt {
+  transition:
+    transform var(--t-normal) var(--ease-out),
+    box-shadow var(--t-normal) var(--ease-out),
+    border-color var(--t-fast);
+}
+.mod-card:hover, .role-card:hover, .scenario-card:hover, .iv-round-card:hover {
+  transform: translateY(-2px);
+}
+
+/* --------- (§22) Micro-interactions --------- */
+.btn, .code-btn, .ws-btn, .mock-nav-btn, .engine-btn, .engine-nav-btn,
+.role-btn, .review-btn, .rf-btn, .tomorrow-role, .tomorrow-time,
+.iv-tab, .iv-toggle-btn, .iv-pg-btn, .iv-act-btn, .adaptive-btn,
+.tomorrow-start-btn, .mock-start-btn, .mock-reveal-btn, .mock-mark,
+.engine-sm-btn, .module-testcard-btn, .voice-ctrl-btn, .ai-btn,
+.dash-reset-btn {
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    box-shadow var(--t-normal) var(--ease-out),
+    border-color var(--t-fast);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active, .code-btn:active, .ws-btn:active, .mock-nav-btn:active,
+.engine-btn:active, .role-btn:active, .rf-btn:active, .iv-toggle-btn:active,
+.iv-pg-btn:active, .iv-act-btn:active, .tomorrow-start-btn:active,
+.mock-start-btn:active, .mock-reveal-btn:active, .mock-mark:active,
+.engine-sm-btn:active, .adaptive-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* --------- (§24, §25) Code block polish --------- */
+.code-block { position: relative; }
+.code-block pre, .code-editor {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 40%, transparent) transparent;
+}
+.code-block pre::-webkit-scrollbar,
+.code-editor::-webkit-scrollbar,
+.ws-editor::-webkit-scrollbar,
+.diagram-box::-webkit-scrollbar,
+.mistake-code::-webkit-scrollbar,
+.engine-code-block::-webkit-scrollbar,
+.engine-r-pre::-webkit-scrollbar { height: 8px; width: 8px; }
+.code-block pre::-webkit-scrollbar-thumb,
+.code-editor::-webkit-scrollbar-thumb,
+.ws-editor::-webkit-scrollbar-thumb,
+.diagram-box::-webkit-scrollbar-thumb,
+.mistake-code::-webkit-scrollbar-thumb,
+.engine-code-block::-webkit-scrollbar-thumb,
+.engine-r-pre::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 4px;
+}
+.example-output {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.2) transparent;
+  max-height: min(400px, 60dvh);
+  overflow: auto;
+}
+
+/* Loading spinner used by run buttons */
+.spin {
+  display: inline-block; width: 14px; height: 14px; margin-right: 6px;
+  border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  border-radius: 50%; animation: spinRotate 0.7s linear infinite;
+  vertical-align: -3px;
+}
+@keyframes spinRotate { to { transform: rotate(360deg); } }
+
+/* --------- (§26, §27) Interview screen polish --------- */
+.iv-card {
+  transition: transform var(--t-fast) var(--ease-out),
+              border-color var(--t-fast),
+              box-shadow var(--t-normal) var(--ease-out);
+}
+.iv-card:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.iv-card-head {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 14px 16px;
+  background: transparent; border: none; cursor: pointer;
+  font: inherit; color: inherit;
+}
+.iv-q-num {
+  flex: 0 0 auto; min-width: 40px;
+  font-family: var(--font-mono); font-weight: 800;
+  color: var(--accent); font-size: 13px;
+}
+.iv-q-text { flex: 1; font-weight: 650; }
+.iv-toggle-arrow { transition: transform var(--t-normal) var(--ease-out); flex: 0 0 auto; color: var(--text-faint); }
+.iv-card-head.open .iv-toggle-arrow { transform: rotate(180deg); }
+.iv-card-body { padding: 4px 16px 18px; }
+
+/* --------- (§28, §29) Dashboard polish --------- */
+.dash-stat {
+  position: relative;
+  overflow: hidden;
+}
+.dash-stat::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent);
+  pointer-events: none;
+}
+.dash-band-fill { position: relative; }
+
+/* --------- (§30, §31) AI Explain / Voice polish --------- */
+.ai-btn, .ai-voice-btn { padding: 12px 22px; border-radius: var(--r-md); font-weight: 700; }
+.voice-controls {
+  border-radius: var(--r-md);
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+}
+.voice-indicator {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  background: #22c55e;
+  animation: voicePulse 1.4s ease-in-out infinite;
+}
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+  50%      { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+}
+
+/* --------- (§33) Form polish --------- */
+input[type="text"], input[type="search"], input[type="email"],
+input[type="password"], textarea, select, .iv-select, .iv-search,
+.mock-select, .engine-input, .code-editor, .ws-editor, .jd-input {
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-normal) var(--ease-out),
+    background var(--t-fast);
+}
+input:disabled, textarea:disabled, select:disabled, button:disabled {
+  opacity: 0.5; cursor: not-allowed; pointer-events: none;
+}
+
+/* --------- (§34) Modals/drawers — future-proof --------- */
+[role="dialog"], .modal, .drawer {
+  max-height: min(90dvh, 900px);
+  max-height: 90vh; /* fallback */
+}
+
+/* --------- (§37, §38) Animation system tokens applied to key sequences --------- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes fadeScale {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translate3d(20px, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.concept, .iv-card, .mod-card, .role-card, .scenario-card, .sd-track {
+  will-change: transform;
+}
+.reveal { opacity: 0; transform: translate3d(0, 12px, 0); transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out); }
+.reveal.visible { opacity: 1; transform: none; }
+
+/* --------- (§43) Touch: raise all tappable to 44px min --------- */
+@media (pointer: coarse) {
+  .iv-tab, .iv-toggle-btn, .iv-pg-btn, .iv-act-btn,
+  .role-btn, .rf-btn, .review-btn, .engine-btn, .engine-nav-btn,
+  .engine-sm-btn, .mock-nav-btn, .mock-mark, .tomorrow-role,
+  .tomorrow-time, .voice-ctrl-btn, .sr-item, .lang-menu button {
+    min-height: 44px;
+  }
+  .iv-act-btn { padding: 10px 14px; }
+  .iv-tab { padding: 12px 16px; }
+}
+
+/* --------- (§45) Cross-browser: backdrop, gradients, sticky --------- */
+@supports not (backdrop-filter: blur(1px)) {
+  .topbar, .voice-controls { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--bg); }
+}
+
+/* --------- (§44) Mobile drawer + safe area at bottom --------- */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: calc(var(--topbar-h) + env(safe-area-inset-top, 0));
+    bottom: 0;
+    left: 0;
+    width: min(340px, 88vw);
+    transform: translate3d(-105%, 0, 0);
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 0));
+  }
+  body.nav-open .sidebar { transform: translate3d(0, 0, 0); }
+  body.nav-open .scrim {
+    opacity: 1; pointer-events: auto;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  }
+  .scrim {
+    position: fixed; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--t-normal);
+  }
+  .layout { grid-template-columns: 1fr; }
+  body.nav-open { overflow: hidden; }
+  /* Push content to full width on mobile */
+  .content { padding: 20px clamp(12px, 3vw, 24px) 100px; }
+}
+
+/* --------- (§10, §11) Fine mobile breakpoints --------- */
+/* Ultra-narrow (320px) */
+@media (max-width: 360px) {
+  .topbar { padding-left: 12px; padding-right: 12px; }
+  .brand-logo { font-size: 22px; }
+  .search-wrap input { font-size: 14px; }
+  .content { padding: 16px 10px 90px; }
+  .hero { padding: 24px 16px; border-radius: var(--r-md); }
+  .hero h1 { font-size: 22px; }
+  .hero p { font-size: 13.5px; }
+  .iv-header h1 { font-size: 22px; }
+  .mock-big-num { font-size: 52px; }
+}
+
+/* iPhone standard (375-414) */
+@media (min-width: 361px) and (max-width: 430px) {
+  .hero { padding: 30px 18px; }
+  .home-grid { gap: 12px; }
+}
+
+/* --------- (§14, §15) Tablet / desktop: max content width --------- */
+:root { --content-maxw: 1140px; }
+.content > .module-page, .content > .interview-page, .content > .ai-explain-page,
+.content > .workspace, .content > .hero, .content > .home-grid,
+.content > .home-section-title, .content > .app-footer {
+  max-width: var(--content-maxw);
+  margin-left: auto; margin-right: auto;
+}
+
+/* --------- (§39) No layout shift on hero badges/CTA --------- */
+.hero-badges { min-height: 30px; }
+.hero-cta { min-height: 44px; }
+.hero-progress { min-height: 4px; }
+
+/* --------- (§46, §54) Performance — GPU hints on animated elements --------- */
+.topbar, .sidebar, .hero, .concept, .mod-card, .iv-card, .role-card, .scenario-card {
+  transform: translateZ(0);
+}
+
+/* --------- (§7) Brand mark upgrade — CSS SVG monogram --------- */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4b8bbe 0%, #6d5efc 55%, #8b5cf6 100%);
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 4px 14px rgba(109,94,252,.4);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.brand-logo::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,.3) 50%, transparent 60%);
+  animation: brandShine 6s ease-in-out infinite;
+}
+@keyframes brandShine { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
+.brand:hover .brand-logo { transform: rotate(-6deg) scale(1.05); }
+
+/* --------- Print styles — respect content --------- */
+@media print {
+  .topbar, .sidebar, .scrim, .search-wrap, .code-actions, .iv-tabs, .voice-controls,
+  .code-btn, .ws-btn, .mock-nav, .engine-nav, body::before, body::after { display: none !important; }
+  body { background: #fff; color: #000; }
+  .content { padding: 0 !important; max-width: 100% !important; }
+  .concept, .iv-card { break-inside: avoid; }
+}
+
+/* --------- (§32) Language selector polish --------- */
+.lang-menu {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0,0,0,.24);
+  border: 1px solid var(--border);
+  animation: fadeUp var(--t-normal) var(--ease-out);
+}
+.lang-menu button { transition: background var(--t-fast); font-size: 14px; }
+.lang-menu button.active { background: var(--accent-soft); color: var(--accent); }
+.lang-menu button .tick { margin-left: auto; color: var(--accent); }
+
+/* --------- Ensure no arbitrary z-index spikes clash --------- */
+[style*="z-index: 99"], [style*="z-index:99"] { z-index: var(--z-modal) !important; }
+
+/* --------- (§58) Consistent icon sizing --------- */
+.iv-icon, .ai-icon, .brand-logo, .scenario-step-num, .qa-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* --------- Empty / loading / error states (§51, §56) --------- */
+.ai-error, .iv-empty, .dash-empty {
+  padding: 18px; border-radius: var(--r-md);
+  background: color-mix(in srgb, #ef4444 10%, var(--surface));
+  border-left: 3px solid #ef4444;
+  color: var(--text);
+  font-size: 14px;
+}
+.iv-empty { background: var(--bg-elev); border-left-color: var(--accent); color: var(--text-dim); text-align: center; padding: 40px 20px; }
+
+/* --------- (§55) Prevent user-content overflow disasters --------- */
+.iv-q-text, .iv-card-body, .adaptive-preview-q,
+.mock-missed-q, .jd-rec-q, .scenario-title,
+.rf-question, .mock-q-text {
+  overflow-wrap: anywhere; word-break: break-word; hyphens: auto;
+}
+
+/* --------- Final: dark mode contrast bumps (WCAG) --------- */
+[data-theme="dark"] {
+  --text-dim: #b4c1d9;
+  --text-faint: #7d8eb1;
+}
+[data-theme="light"] {
+  --text-dim: #4a5568;
+  --text-faint: #718096;
+}
+
+/* --------- iOS: prevent bounce chaining, allow inner scroll --------- */
+.iv-card-body, .engine-r-pre, .diagram-box, .code-block pre, .example-output,
+.ws-editor, .code-editor, .mistake-code, .engine-code-block, .jd-input {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* --------- Better tab overflow on mobile (many tabs) --------- */
+.iv-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 6px;
+  padding-bottom: 6px;
+  margin-left: -4px; margin-right: -4px;
+  padding-left: 4px; padding-right: 4px;
+}
+.iv-tabs::-webkit-scrollbar { display: none; }
+.iv-tab { scroll-snap-align: start; flex-shrink: 0; }
+
+/* --------- Bookmark/studied pulse on toggle --------- */
+.iv-act-btn.active { animation: fadeScale 250ms var(--ease-out); }
+
+/* --------- Ensure hero doesn't overlap topbar on very small screens --------- */
+.content > .hero:first-child { margin-top: 4px; }
+
+/* --------- (§35) Wide-table safety — for future tables --------- */
+table { max-width: 100%; border-collapse: collapse; }
+table[data-scroll] { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* End production polish layer */

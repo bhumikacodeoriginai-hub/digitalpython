@@ -2697,6 +2697,28 @@
     route(); // re-render current view in the new language
   }
 
+  /* ---------- iOS/Android viewport fix — --vh always tracks real px ---------- */
+  function updateVH() {
+    var vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty("--vh", vh + "px");
+  }
+  updateVH();
+  window.addEventListener("resize", updateVH, { passive: true });
+  window.addEventListener("orientationchange", updateVH, { passive: true });
+
+  /* ---------- Skip-to-content injection for a11y (§23, §52) ---------- */
+  (function injectSkipLink() {
+    if (document.querySelector(".skip-to-content")) return;
+    var link = document.createElement("a");
+    link.className = "skip-to-content";
+    link.href = "#content";
+    link.textContent = "Skip to content";
+    document.body.insertBefore(link, document.body.firstChild);
+    // Ensure #content exists to be a target
+    var main = document.querySelector(".content");
+    if (main && !main.id) main.id = "content";
+  })();
+
   /* ---------- Boot ---------- */
   function boot() {
     MODULES.forEach(function (mod) { (mod.concepts || []).forEach(function (con) { con._modId = mod.id; }); });
@@ -2728,6 +2750,22 @@
 
     window.addEventListener("hashchange", route);
     route();
+
+    /* ARIA polish (§23, §52) — non-destructive attribute additions */
+    (function ariaPolish() {
+      var topbar = document.querySelector(".topbar"); if (topbar) topbar.setAttribute("role", "banner");
+      var sidebar = document.querySelector(".sidebar"); if (sidebar) { sidebar.setAttribute("role", "navigation"); sidebar.setAttribute("aria-label", "Modules navigation"); }
+      var content = document.querySelector(".content"); if (content) { content.setAttribute("role", "main"); content.setAttribute("aria-live", "polite"); }
+      var scrim = document.querySelector(".scrim"); if (scrim) scrim.setAttribute("aria-hidden", "true");
+      var mt = document.querySelector("#menuToggle"); if (mt) mt.setAttribute("aria-expanded", "false");
+      // Toggle aria-expanded when nav opens/closes
+      var mo = new MutationObserver(function () {
+        var open = document.body.classList.contains("nav-open");
+        if (mt) mt.setAttribute("aria-expanded", open ? "true" : "false");
+        if (sidebar) sidebar.setAttribute("aria-hidden", open ? "false" : (window.innerWidth <= 900 ? "true" : "false"));
+      });
+      mo.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    })();
 
     // Scroll-reveal animation (IntersectionObserver)
     if (window.IntersectionObserver) {

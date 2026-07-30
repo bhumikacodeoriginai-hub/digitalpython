@@ -162,6 +162,33 @@
         (mod.topics && mod.topics.length ? "<ul>" + mod.topics.map(function (t) { return "<li>" + escapeHtml(t) + "</li>"; }).join("") + "</ul>" : "");
       page.appendChild(stub);
     }
+    // Test-your-knowledge shortcut → jumps into the interview page filtered to the closest topic
+    var iv = window.DP_INTERVIEW;
+    if (iv && iv.questions && iv.levels) {
+      var moduleTitleLc = String(mod.title || "").toLowerCase();
+      var matchTopic = null;
+      iv.levels.forEach(function (lvl) {
+        var ll = lvl.toLowerCase();
+        if (matchTopic) return;
+        if (moduleTitleLc.indexOf(ll) !== -1 || ll.indexOf(moduleTitleLc.split(" ")[0]) !== -1) matchTopic = lvl;
+      });
+      var testCard = el("div", "module-testcard");
+      testCard.innerHTML =
+        '<div class="module-testcard-head">🎯 Test your interview knowledge</div>' +
+        '<div class="module-testcard-body">Ready to see if you\'d answer this in an interview? Practise ' + escapeHtml(matchTopic || "any topic") + ' questions with self-assessment.</div>' +
+        '<div class="module-testcard-actions">' +
+          '<a class="module-testcard-btn module-testcard-btn-primary" href="#/interview" data-filter="' + (matchTopic || "") + '">🔍 Browse Questions</a>' +
+          '<a class="module-testcard-btn" href="#/interview/output">🔮 Predict Output</a>' +
+          '<a class="module-testcard-btn" href="#/interview/mock">🎤 Start Mock</a>' +
+        '</div>';
+      page.appendChild(testCard);
+      // Wire the filter link
+      testCard.querySelector('[data-filter]').addEventListener("click", function () {
+        var t = this.dataset.filter;
+        if (t) interviewFilters = { level: t, difficulty: "", company: "", search: "", frequency: "", round: "", questionType: "", showBookmarked: false, showStudied: null };
+      });
+    }
+
     page.appendChild(buildPageNav(mod));
     page.appendChild(el("footer", "app-footer", T("modulesLabel") + " " + mod.id + " · <strong>" + escapeHtml(T("heroTitle")) + "</strong>"));
     content.appendChild(page);
@@ -783,8 +810,11 @@
       { id: "rapid",   label: "⚡ Rapid Fire",   hash: "#/interview/rapid-fire" },
       { id: "output",  label: "🔮 Predict Output", hash: "#/interview/output" },
       { id: "debug",   label: "🐞 Find the Bug", hash: "#/interview/debug" },
-      { id: "mock",    label: "🎤 Mock Interview", hash: "#/interview/mock" },
+      { id: "mock",    label: "🎤 Mock",        hash: "#/interview/mock" },
       { id: "adaptive",label: "🧠 Adaptive",     hash: "#/interview/adaptive" },
+      { id: "roles",   label: "🎭 By Role",      hash: "#/interview/roles" },
+      { id: "tomorrow",label: "🌅 Tomorrow",    hash: "#/interview/tomorrow" },
+      { id: "scenarios",label: "🚨 Scenarios",  hash: "#/interview/scenarios" },
       { id: "rounds",  label: "🎯 By Round",     hash: "#/interview/rounds" },
       { id: "dash",    label: "📊 Dashboard",    hash: "#/interview/dashboard" },
       { id: "plans",   label: "📅 Study Plans",  hash: "#/interview/plans" }
@@ -1646,6 +1676,243 @@
   }
 
   /* ============================================================
+     ROLE-BASED TRACKS (Spec #12)
+     ============================================================ */
+  function renderRoles() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data || !data.roles) { content.innerHTML = '<div class="ai-error">Role data not loaded.</div>'; return; }
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🎭</span> Role-Based Interview Tracks</h1>' +
+      '<p class="iv-subtitle">Pick the exact role you\'re interviewing for. The system samples questions from the right topics with the right weights.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("roles"));
+
+    var grid = el("div", "roles-grid");
+    data.roles.forEach(function (r) {
+      var card = el("div", "role-card");
+      var topTopics = Object.keys(r.topicWeights).sort(function (a, b) { return r.topicWeights[b] - r.topicWeights[a]; }).slice(0, 4);
+      var weightBar = topTopics.map(function (t) {
+        return '<div class="role-weight-row"><span class="role-weight-topic">' + escapeHtml(t) + '</span>' +
+          '<div class="role-weight-bar"><div class="role-weight-fill" style="width:' + Math.min(100, r.topicWeights[t] * 2) + '%"></div></div>' +
+          '<span class="role-weight-pct">' + r.topicWeights[t] + '%</span></div>';
+      }).join("");
+      card.innerHTML =
+        '<div class="role-head"><span class="role-icon">' + r.icon + '</span>' +
+        '<span class="role-name">' + escapeHtml(r.name) + '</span>' +
+        '<span class="role-target">L' + r.targetExp + '</span></div>' +
+        '<div class="role-summary">' + escapeHtml(r.summary) + '</div>' +
+        '<div class="role-weights">' + weightBar + '</div>' +
+        '<div class="role-actions">' +
+          '<button class="role-btn role-btn-primary" data-role="' + r.id + '" data-count="20">🎤 20-Q Mock</button>' +
+          '<button class="role-btn" data-role="' + r.id + '" data-count="10">Quick 10</button>' +
+          '<button class="role-btn" data-role="' + r.id + '" data-count="40">Deep 40</button>' +
+        '</div>';
+      grid.appendChild(card);
+    });
+    page.appendChild(grid);
+    content.appendChild(page);
+
+    grid.querySelectorAll(".role-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var roleId = this.dataset.role;
+        var count = parseInt(this.dataset.count, 10) || 20;
+        var picks = data.pickByRole(roleId, count);
+        if (!picks.length) { alert("No questions found for this role. Try a different one."); return; }
+        MOCK_STATE = {
+          config: { role: roleId, count: count },
+          questions: picks,
+          idx: 0,
+          answers: picks.map(function () { return { selfMark: null, timeSec: 0, revealed: false }; }),
+          startedAt: Date.now(),
+          qStart: Date.now()
+        };
+        location.hash = "#/interview/mock/session";
+      });
+    });
+
+    highlightSidebar(null, null);
+    document.title = "Role-Based Tracks | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
+     INTERVIEW TOMORROW (Spec #21)
+     ============================================================ */
+  function renderTomorrow() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🌅</span> Interview Tomorrow</h1>' +
+      '<p class="iv-subtitle">Focused, time-boxed prep. Pick how long you have and what you\'re interviewing for.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("tomorrow"));
+
+    var wrap = el("div", "tomorrow-wrap");
+    wrap.innerHTML =
+      '<div class="tomorrow-step"><div class="tomorrow-step-label">Step 1 — Role</div>' +
+      '<div class="tomorrow-roles" id="tmRoles">' +
+        data.roles.map(function (r, i) { return '<button class="tomorrow-role' + (i === 1 ? ' active' : '') + '" data-role="' + r.id + '">' + r.icon + ' ' + escapeHtml(r.name) + '</button>'; }).join("") +
+      '</div></div>' +
+      '<div class="tomorrow-step"><div class="tomorrow-step-label">Step 2 — Time available</div>' +
+      '<div class="tomorrow-times" id="tmTimes">' +
+        data.timePlans.map(function (t, i) {
+          return '<button class="tomorrow-time' + (i === 1 ? ' active' : '') + '" data-min="' + t.minutes + '"><span class="tomorrow-min">' + t.minutes + ' min</span><span class="tomorrow-note">' + escapeHtml(t.note) + '</span><span class="tomorrow-qcount">' + t.questions + ' Qs</span></button>';
+        }).join("") +
+      '</div></div>' +
+      '<div class="tomorrow-step tomorrow-action">' +
+        '<button class="tomorrow-start-btn" id="tmStart">🚀 Start My Prep Session</button>' +
+        '<div class="tomorrow-hint">Focus mode: no distractions, questions weighted for your role and time budget.</div>' +
+      '</div>';
+    page.appendChild(wrap);
+
+    content.appendChild(page);
+
+    var selRole = "developer", selTime = 60;
+    var roleBtns = wrap.querySelectorAll(".tomorrow-role");
+    var timeBtns = wrap.querySelectorAll(".tomorrow-time");
+    // Sync default active state
+    roleBtns.forEach(function (b) { if (b.dataset.role === "developer") { roleBtns.forEach(function (o) { o.classList.remove("active"); }); b.classList.add("active"); } });
+    timeBtns.forEach(function (b) { if (parseInt(b.dataset.min, 10) === 60) { timeBtns.forEach(function (o) { o.classList.remove("active"); }); b.classList.add("active"); } });
+
+    roleBtns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        roleBtns.forEach(function (o) { o.classList.remove("active"); });
+        this.classList.add("active");
+        selRole = this.dataset.role;
+      });
+    });
+    timeBtns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        timeBtns.forEach(function (o) { o.classList.remove("active"); });
+        this.classList.add("active");
+        selTime = parseInt(this.dataset.min, 10);
+      });
+    });
+
+    $("#tmStart").addEventListener("click", function () {
+      var picks = data.pickForTime(selTime, selRole);
+      if (!picks.length) { alert("No questions match. Try a different role."); return; }
+      MOCK_STATE = {
+        config: { role: selRole, minutes: selTime, count: picks.length },
+        questions: picks,
+        idx: 0,
+        answers: picks.map(function () { return { selfMark: null, timeSec: 0, revealed: false }; }),
+        startedAt: Date.now(),
+        qStart: Date.now()
+      };
+      location.hash = "#/interview/mock/session";
+    });
+
+    highlightSidebar(null, null);
+    document.title = "Interview Tomorrow | Prep";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
+     PRODUCTION SCENARIOS (Spec #18)
+     ============================================================ */
+  function renderScenarios() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data || !data.scenarios) { content.innerHTML = '<div class="ai-error">Scenario data not loaded.</div>'; return; }
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🚨</span> Production Scenarios</h1>' +
+      '<p class="iv-subtitle">Senior-level: real outages, real trade-offs. For each scenario see Detect → Investigate → Mitigate → Fix → Prevent → Monitor → Postmortem.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("scenarios"));
+
+    var grid = el("div", "scenarios-grid");
+    data.scenarios.forEach(function (s) {
+      var card = el("a", "scenario-card");
+      card.href = "#/interview/scenarios/" + s.id;
+      card.innerHTML =
+        '<div class="scenario-head">' +
+          '<span class="scenario-title">' + escapeHtml(s.title) + '</span>' +
+          '<span class="iv-diff diff-' + s.difficulty.toLowerCase() + '">' + escapeHtml(s.difficulty) + '</span>' +
+        '</div>' +
+        '<div class="scenario-topic">' + escapeHtml(s.topic) + ' · L' + s.expLevel + '</div>' +
+        '<div class="scenario-symptom">📉 <em>' + escapeHtml(s.symptom) + '</em></div>' +
+        '<div class="scenario-cta">→ Walk through the incident</div>';
+      grid.appendChild(card);
+    });
+    page.appendChild(grid);
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Production Scenarios | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  function renderScenarioDetail(id) {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var scenario = null;
+    (data.scenarios || []).some(function (s) { if (s.id === id) { scenario = s; return true; } return false; });
+    if (!scenario) { location.hash = "#/interview/scenarios"; return; }
+
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🚨</span> ' + escapeHtml(scenario.title) + '</h1>' +
+      '<p class="iv-subtitle">' + escapeHtml(scenario.topic) + ' · Level ' + scenario.expLevel + ' · ' + escapeHtml(scenario.difficulty) + '</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("scenarios"));
+
+    // Back link
+    var back = el("a", "scenario-back");
+    back.href = "#/interview/scenarios"; back.textContent = "← All scenarios";
+    page.appendChild(back);
+
+    // Context + symptom
+    var contextCard = el("div", "scenario-context-card");
+    contextCard.innerHTML =
+      '<div class="scenario-ctx-label">🎬 Context</div><p>' + escapeHtml(scenario.context) + '</p>' +
+      '<div class="scenario-ctx-label">📉 Symptom</div><p>' + escapeHtml(scenario.symptom) + '</p>';
+    page.appendChild(contextCard);
+
+    // Interviewer prompt
+    var prompt = el("div", "scenario-prompt");
+    prompt.innerHTML = '<div class="scenario-prompt-label">🎤 Interviewer asks:</div>' +
+      '<div class="scenario-prompt-text">"You get paged for this. Walk me through your response step by step — what would you do first, and why?"</div>' +
+      '<div class="scenario-prompt-actions">' +
+      '<button class="mock-reveal-btn" id="scReveal">👁 Reveal Expert Response</button>' +
+      '</div>';
+    page.appendChild(prompt);
+
+    // Steps (hidden until reveal)
+    var stepsWrap = el("div", "scenario-steps"); stepsWrap.style.display = "none";
+    scenario.steps.forEach(function (s, i) {
+      stepsWrap.innerHTML += '<div class="scenario-step">' +
+        '<div class="scenario-step-num">' + (i + 1) + '</div>' +
+        '<div class="scenario-step-body">' +
+          '<div class="scenario-step-phase">' + escapeHtml(s.phase) + '</div>' +
+          '<div class="scenario-step-action">' + escapeHtml(s.action) + '</div>' +
+        '</div></div>';
+    });
+    // Keywords panel
+    if (scenario.keywords && scenario.keywords.length) {
+      stepsWrap.innerHTML += '<div class="scenario-kw">' +
+        '<div class="scenario-kw-label">🎯 Keywords the interviewer wants to hear:</div>' +
+        scenario.keywords.map(function (k) { return '<span class="iv-kw">' + escapeHtml(k) + '</span>'; }).join(" ") +
+        '</div>';
+    }
+    page.appendChild(stepsWrap);
+
+    content.appendChild(page);
+
+    $("#scReveal").addEventListener("click", function () {
+      stepsWrap.style.display = "block";
+      this.style.display = "none";
+    });
+
+    highlightSidebar(null, null);
+    document.title = scenario.title + " | Scenarios";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
      MOCK INTERVIEW FLOW  (Phase 5)
      Config screen -> Session screen -> Result screen
      State stored in-memory + last result in localStorage
@@ -1825,11 +2092,18 @@
       (q.company ? '<div class="mock-q-meta">Commonly asked at: ' + q.company.map(escapeHtml).join(", ") + '</div>' : '');
     page.appendChild(qCard);
 
+    // Type your answer (optional — enables auto-evaluation)
+    var typeBox = el("div", "mock-typebox");
+    var hasKeywords = (q.expectedKeywords && q.expectedKeywords.length) ? true : false;
+    typeBox.innerHTML = '<label class="engine-label">Type your answer (optional — enables automatic scoring):</label>' +
+      '<textarea class="engine-input" id="mockUserAnswer" rows="3" placeholder="' + (hasKeywords ? "Type your answer here — we'll match it against the concepts the interviewer expects." : "Type your answer here — self-assess after revealing.") + '" spellcheck="false"></textarea>';
+    page.appendChild(typeBox);
+
     // Reveal / answer area
     var revealBox = el("div", "mock-reveal");
     var answerBox = el("div", "mock-answer"); answerBox.style.display = "none";
-    revealBox.innerHTML = '<button class="mock-reveal-btn" id="mockReveal">👁 Reveal Answer & Self-Assess</button>' +
-      '<div class="mock-hint">Think about your answer, then reveal. Be honest when self-marking.</div>';
+    revealBox.innerHTML = '<button class="mock-reveal-btn" id="mockReveal">👁 Reveal Answer' + (hasKeywords ? ' & Auto-Evaluate' : ' & Self-Assess') + '</button>' +
+      '<div class="mock-hint">' + (hasKeywords ? "Your typed answer will be scored against the concepts the interviewer expects." : "Think about your answer, then reveal. Be honest when self-marking.") + '</div>';
     page.appendChild(revealBox);
     page.appendChild(answerBox);
 
@@ -1860,7 +2134,27 @@
       s.answers[s.idx].revealed = true;
       answerBox.style.display = "block";
       revealBox.style.display = "none";
-      var html = '<div class="mock-a-label">✅ Expected Answer</div>' +
+      typeBox.style.display = "none";
+      var html = "";
+
+      // Auto-evaluation block if keywords + user typed something
+      var userAns = ($("#mockUserAnswer") && $("#mockUserAnswer").value) || "";
+      if (hasKeywords && userAns.trim() && window.DP_INTERVIEW.evaluateAnswer) {
+        var ev = window.DP_INTERVIEW.evaluateAnswer(userAns, q.expectedKeywords);
+        if (ev.supported) {
+          s.answers[s.idx].autoScore = ev.score;
+          var bandColor = ev.band === "excellent" ? "good" : ev.band === "strong" ? "good" : ev.band === "partial" ? "partial" : "wrong";
+          html += '<div class="mock-eval mock-eval-' + bandColor + '">' +
+            '<div class="mock-eval-head">🤖 Auto-Evaluation — <b>' + ev.score + '%</b> (' + ev.band + ')</div>' +
+            '<div class="mock-eval-feedback">' + escapeHtml(ev.feedback) + '</div>' +
+            (ev.matched.length ? '<div class="mock-eval-row"><b>✅ You mentioned:</b> ' + ev.matched.map(function(k){return '<span class="iv-kw iv-kw-good">'+escapeHtml(k)+'</span>';}).join(" ") + '</div>' : '') +
+            (ev.missing.length ? '<div class="mock-eval-row"><b>⚠️ Missing concepts:</b> ' + ev.missing.map(function(k){return '<span class="iv-kw iv-kw-miss">'+escapeHtml(k)+'</span>';}).join(" ") + '</div>' : '') +
+            '<div class="mock-eval-disc">' + escapeHtml(ev.disclaimer) + '</div>' +
+            '</div>';
+        }
+      }
+
+      html += '<div class="mock-a-label">✅ Expected Answer</div>' +
         '<div class="mock-a-text">' + renderNotes(q.answer || "(no answer stored)") + '</div>';
       if (q.code) html += '<div class="mock-a-code"><pre class="diagram-box">' + highlight(q.code) + '</pre>' + (q.output ? '<div class="iv-output">Output: ' + escapeHtml(q.output) + '</div>' : '') + '</div>';
       if (q.expectedKeywords && q.expectedKeywords.length) html += '<div class="mock-a-kw"><b>Interviewer expects these keywords:</b> ' + q.expectedKeywords.map(function(k){return '<span class="iv-kw">'+escapeHtml(k)+'</span>';}).join(" ") + '</div>';
@@ -2106,6 +2400,13 @@
     else if (/^#\/interview\/output/.test(hash))        { renderPredictOutput(); }
     else if (/^#\/interview\/debug/.test(hash))         { renderFindBug(); }
     else if (/^#\/interview\/adaptive/.test(hash))      { renderAdaptive(); }
+    else if (/^#\/interview\/roles/.test(hash))         { renderRoles(); }
+    else if (/^#\/interview\/tomorrow/.test(hash))      { renderTomorrow(); }
+    else if (/^#\/interview\/scenarios\/([^/]+)/.test(hash)) {
+      var sm = hash.match(/^#\/interview\/scenarios\/([^/]+)/);
+      renderScenarioDetail(sm[1]);
+    }
+    else if (/^#\/interview\/scenarios/.test(hash))     { renderScenarios(); }
     else if (/^#\/interview/.test(hash)) { renderInterview(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);

@@ -774,7 +774,25 @@
   }
 
   /* ---------- Interview Prep Page ---------- */
-  var interviewFilters = { level: "", difficulty: "", company: "", search: "" };
+  var interviewFilters = { level: "", difficulty: "", company: "", search: "", frequency: "", round: "", questionType: "", showBookmarked: false, showStudied: null };
+
+  function renderInterviewTabs(activeTab) {
+    var tabs = el("div", "iv-tabs");
+    var items = [
+      { id: "browse",  label: "🔍 Browse",       hash: "#/interview" },
+      { id: "rapid",   label: "⚡ Rapid Fire",   hash: "#/interview/rapid-fire" },
+      { id: "rounds",  label: "🎯 By Round",     hash: "#/interview/rounds" },
+      { id: "dash",    label: "📊 Dashboard",    hash: "#/interview/dashboard" },
+      { id: "plans",   label: "📅 Study Plans",  hash: "#/interview/plans" }
+    ];
+    items.forEach(function (it) {
+      var a = el("a", "iv-tab" + (it.id === activeTab ? " active" : ""));
+      a.href = it.hash;
+      a.textContent = it.label;
+      tabs.appendChild(a);
+    });
+    return tabs;
+  }
 
   function renderInterview() {
     var content = $("#content"); content.innerHTML = "";
@@ -791,8 +809,10 @@
       '<div class="iv-stats">' +
         '<span class="iv-stat"><b>' + totalQ + '</b> Questions</span>' +
         '<span class="iv-stat"><b>' + data.levels.length + '</b> Topics</span>' +
-        '<span class="iv-stat"><b>' + data.companyGuide.length + '</b> Company Guides</span>' +
+        '<span class="iv-stat"><b>' + ((data.companyGuideExtended || data.companyGuide) || []).length + '</b> Company Guides</span>' +
+        '<span class="iv-stat"><b>' + (data.rounds ? data.rounds.length : 0) + '</b> Rounds</span>' +
       '</div></div>';
+    page.appendChild(renderInterviewTabs("browse"));
 
     // Filter bar
     var filterBar = el("div", "iv-filters");
@@ -806,13 +826,63 @@
     filterBar.appendChild(levelSel);
     // Difficulty filter
     var diffSel = el("select", "iv-select");
-    var diffs = ["Beginner", "Intermediate", "Advanced", "Expert"];
+    var diffs = ["Beginner", "Easy", "Intermediate", "Advanced", "Expert"];
     diffSel.innerHTML = '<option value="">All Levels</option>' + diffs.map(function (d) { return '<option value="' + d + '"' + (interviewFilters.difficulty === d ? ' selected' : '') + '>' + d + '</option>'; }).join("");
     filterBar.appendChild(diffSel);
     // Company filter
+    var companies = data.companiesExtended || data.companies;
     var compSel = el("select", "iv-select");
-    compSel.innerHTML = '<option value="">All Companies</option>' + data.companies.map(function (c) { return '<option value="' + c + '"' + (interviewFilters.company === c ? ' selected' : '') + '>' + c + '</option>'; }).join("");
+    compSel.innerHTML = '<option value="">All Companies</option>' + companies.map(function (c) { return '<option value="' + c + '"' + (interviewFilters.company === c ? ' selected' : '') + '>' + c + '</option>'; }).join("");
     filterBar.appendChild(compSel);
+    // Frequency filter (new)
+    if (data.frequencies) {
+      var freqSel = el("select", "iv-select");
+      freqSel.innerHTML = '<option value="">All Frequencies</option>' + data.frequencies.map(function (f) { return '<option value="' + f.id + '"' + (interviewFilters.frequency === f.id ? ' selected' : '') + '>' + f.emoji + " " + f.label + '</option>'; }).join("");
+      filterBar.appendChild(freqSel);
+      freqSel.addEventListener("change", function () { interviewFilters.frequency = this.value; applyFilters(); });
+    }
+    // Round filter (new)
+    if (data.rounds) {
+      var roundSel = el("select", "iv-select");
+      roundSel.innerHTML = '<option value="">All Rounds</option>' + data.rounds.map(function (r) { return '<option value="' + r.id + '"' + (interviewFilters.round === r.id ? ' selected' : '') + '>' + r.icon + " " + r.name + '</option>'; }).join("");
+      filterBar.appendChild(roundSel);
+      roundSel.addEventListener("change", function () { interviewFilters.round = this.value; applyFilters(); });
+    }
+    // Question type filter (new)
+    if (data.questionTypes) {
+      var typeSel = el("select", "iv-select");
+      typeSel.innerHTML = '<option value="">All Types</option>' + data.questionTypes.map(function (t) { return '<option value="' + t.id + '"' + (interviewFilters.questionType === t.id ? ' selected' : '') + '>' + t.icon + " " + t.label + '</option>'; }).join("");
+      filterBar.appendChild(typeSel);
+      typeSel.addEventListener("change", function () { interviewFilters.questionType = this.value; applyFilters(); });
+    }
+    // Bookmark-only toggle
+    var bmToggle = el("button", "iv-toggle-btn" + (interviewFilters.showBookmarked ? " active" : ""));
+    bmToggle.innerHTML = "🔖 Bookmarked";
+    bmToggle.addEventListener("click", function () {
+      interviewFilters.showBookmarked = !interviewFilters.showBookmarked;
+      this.classList.toggle("active", interviewFilters.showBookmarked);
+      applyFilters();
+    });
+    filterBar.appendChild(bmToggle);
+    // Studied filter
+    var studiedSel = el("select", "iv-select");
+    studiedSel.innerHTML =
+      '<option value="">Studied? (all)</option>' +
+      '<option value="yes"' + (interviewFilters.showStudied === true ? ' selected' : '') + '>✓ Only studied</option>' +
+      '<option value="no"'  + (interviewFilters.showStudied === false ? ' selected' : '') + '>Not yet studied</option>';
+    filterBar.appendChild(studiedSel);
+    studiedSel.addEventListener("change", function () {
+      interviewFilters.showStudied = this.value === "yes" ? true : (this.value === "no" ? false : null);
+      applyFilters();
+    });
+    // Clear filters
+    var clearBtn = el("button", "iv-toggle-btn");
+    clearBtn.innerHTML = "✖ Clear";
+    clearBtn.addEventListener("click", function () {
+      interviewFilters = { level: "", difficulty: "", company: "", search: "", frequency: "", round: "", questionType: "", showBookmarked: false, showStudied: null };
+      renderInterview();
+    });
+    filterBar.appendChild(clearBtn);
     page.appendChild(filterBar);
 
     // Results container
@@ -820,10 +890,11 @@
     page.appendChild(results);
 
     // Company guide section
+    var guideList = data.companyGuideExtended || data.companyGuide || [];
     var guideSection = el("div", "iv-guide-section");
-    guideSection.innerHTML = '<h2 class="iv-section-title">🏢 Company-wise Interview Guide</h2>';
+    guideSection.innerHTML = '<h2 class="iv-section-title">🏢 Company-wise Interview Guide <span class="iv-section-count">' + guideList.length + '</span></h2>';
     var guideGrid = el("div", "iv-guide-grid");
-    data.companyGuide.forEach(function (g) {
+    guideList.forEach(function (g) {
       var card = el("div", "iv-guide-card");
       card.innerHTML = '<div class="iv-guide-head"><span class="iv-guide-name">' + escapeHtml(g.name) + '</span><span class="iv-guide-tier">' + escapeHtml(g.tier) + '</span></div>' +
         '<div class="iv-guide-row"><b>Rounds:</b> ' + escapeHtml(g.rounds) + '</div>' +
@@ -837,28 +908,49 @@
 
     content.appendChild(page);
 
+    var PAGE_SIZE = 40;
+    var currentPage = 1;
+
     function applyFilters() {
       interviewFilters.search = searchInp.value.toLowerCase().trim();
       interviewFilters.level = levelSel.value;
       interviewFilters.difficulty = diffSel.value;
       interviewFilters.company = compSel.value;
+      currentPage = 1;
       renderQuestions();
     }
 
-    function renderQuestions() {
-      var filtered = data.questions.filter(function (q) {
+    function filteredList() {
+      return data.questions.map(function (q, i) { return { q: q, index: i }; }).filter(function (item) {
+        var q = item.q;
         if (interviewFilters.level && q.level !== interviewFilters.level) return false;
         if (interviewFilters.difficulty && q.difficulty !== interviewFilters.difficulty) return false;
         if (interviewFilters.company && (!q.company || q.company.indexOf(interviewFilters.company) === -1)) return false;
+        if (interviewFilters.frequency && q.frequency !== interviewFilters.frequency) return false;
+        if (interviewFilters.round && q.round !== interviewFilters.round) return false;
+        if (interviewFilters.questionType && q.questionType !== interviewFilters.questionType) return false;
+        if (interviewFilters.showBookmarked && !window.DPProgress.isBookmarked(item.index)) return false;
+        if (interviewFilters.showStudied === true  && !window.DPProgress.isStudied(item.index)) return false;
+        if (interviewFilters.showStudied === false &&  window.DPProgress.isStudied(item.index)) return false;
         if (interviewFilters.search) {
-          var hay = (q.q + " " + q.answer + " " + q.level).toLowerCase();
+          var hay = (q.q + " " + (q.answer||"") + " " + (q.level||"")).toLowerCase();
           if (hay.indexOf(interviewFilters.search) === -1) return false;
         }
         return true;
       });
-      results.innerHTML = '<div class="iv-count">Showing ' + filtered.length + ' of ' + data.questions.length + ' questions</div>';
-      if (!filtered.length) { results.innerHTML += '<div class="iv-empty">No questions match your filters. Try clearing them.</div>'; return; }
-      filtered.forEach(function (q, i) { results.appendChild(renderQuestionCard(q, i + 1)); });
+    }
+
+    function renderQuestions() {
+      var filtered = filteredList();
+      var total = filtered.length;
+      var totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      if (currentPage > totalPages) currentPage = totalPages;
+      var start = (currentPage - 1) * PAGE_SIZE;
+      var slice = filtered.slice(start, start + PAGE_SIZE);
+      results.innerHTML = '<div class="iv-count">Showing ' + (total ? (start + 1) : 0) + '-' + (start + slice.length) + ' of ' + total + ' questions <span class="iv-count-sub">(from ' + data.questions.length + ' total)</span></div>';
+      if (!total) { results.innerHTML += '<div class="iv-empty">No questions match your filters. Try clearing them.</div>'; return; }
+      slice.forEach(function (item) { results.appendChild(renderQuestionCard(item.q, item.index)); });
+      if (totalPages > 1) results.appendChild(renderPagination(currentPage, totalPages, function (p) { currentPage = p; renderQuestions(); window.scrollTo({ top: results.offsetTop - 80, behavior: "smooth" }); }));
     }
 
     searchInp.addEventListener("input", applyFilters);
@@ -872,14 +964,45 @@
     content.focus(); window.scrollTo(0, 0);
   }
 
+  function freqBadge(freqId) {
+    if (!window.DP_INTERVIEW || !window.DP_INTERVIEW.getFrequency) return "";
+    var f = window.DP_INTERVIEW.getFrequency(freqId);
+    if (!f) return "";
+    return '<span class="iv-freq iv-freq-' + f.id + '" title="' + escapeHtml(f.label) + '">' + f.emoji + '</span>';
+  }
+  function roundBadge(roundId) {
+    if (!window.DP_INTERVIEW || !window.DP_INTERVIEW.getRound) return "";
+    var r = window.DP_INTERVIEW.getRound(roundId);
+    if (!r) return "";
+    return '<span class="iv-round-badge">' + r.icon + " " + escapeHtml(r.id) + '</span>';
+  }
+  function typeBadge(typeId) {
+    if (!window.DP_INTERVIEW || !window.DP_INTERVIEW.getQuestionType) return "";
+    var t = window.DP_INTERVIEW.getQuestionType(typeId);
+    if (!t) return "";
+    return '<span class="iv-type-badge" title="' + escapeHtml(t.label) + '">' + t.icon + '</span>';
+  }
+
   function renderQuestionCard(q, index) {
+    // `index` is now the stable index into DP_INTERVIEW.questions
+    var displayNum = index + 1;
     var card = el("div", "iv-card");
     var diffClass = "diff-" + (q.difficulty || "beginner").toLowerCase();
+    var isBm = window.DPProgress && window.DPProgress.isBookmarked(index);
+    var isStudied = window.DPProgress && window.DPProgress.isStudied(index);
+    var isCorrect = window.DPProgress && window.DPProgress.isCorrect(index);
+    var isIncorrect = window.DPProgress && window.DPProgress.isIncorrect(index);
+    if (isStudied) card.classList.add("studied");
 
     var header = el("button", "iv-card-head");
-    header.innerHTML = '<span class="iv-q-num">Q' + index + '</span>' +
+    header.innerHTML = '<span class="iv-q-num">Q' + displayNum + '</span>' +
       '<span class="iv-q-text">' + escapeHtml(q.q) + '</span>' +
-      '<span class="iv-badges"><span class="iv-diff ' + diffClass + '">' + escapeHtml(q.difficulty) + '</span></span>' +
+      '<span class="iv-badges">' +
+        freqBadge(q.frequency) +
+        roundBadge(q.round) +
+        typeBadge(q.questionType) +
+        '<span class="iv-diff ' + diffClass + '">' + escapeHtml(q.difficulty) + '</span>' +
+      '</span>' +
       '<span class="iv-toggle-arrow">▼</span>';
 
     var body = el("div", "iv-card-body"); body.style.display = "none";
@@ -887,10 +1010,14 @@
     var html = '<div class="iv-meta-row">' +
       '<span class="iv-meta"><b>Experience:</b> ' + escapeHtml(q.experience || "All") + '</span>' +
       (q.company ? '<span class="iv-meta"><b>Asked at:</b> ' + q.company.map(escapeHtml).join(", ") + '</span>' : '') +
+      (q.frequency && window.DP_INTERVIEW.getFrequency ? '<span class="iv-meta"><b>Frequency:</b> ' + window.DP_INTERVIEW.getFrequency(q.frequency).emoji + " " + window.DP_INTERVIEW.getFrequency(q.frequency).label + '</span>' : '') +
       '</div>';
 
     if (q.why) html += '<div class="iv-block iv-why"><div class="iv-block-title">🤔 Why interviewers ask this</div>' + escapeHtml(q.why) + '</div>';
     if (q.answer) html += '<div class="iv-block"><div class="iv-block-title">✅ Answer</div>' + renderNotes(q.answer) + '</div>';
+    if (q.simpleAnswer)       html += '<div class="iv-block iv-ans-beginner"><div class="iv-block-title">👶 Beginner Answer (Simple)</div>' + renderNotes(q.simpleAnswer) + '</div>';
+    if (q.professionalAnswer) html += '<div class="iv-block iv-ans-pro"><div class="iv-block-title">🎯 Professional Interview Answer</div>' + renderNotes(q.professionalAnswer) + '</div>';
+    if (q.seniorAnswer)       html += '<div class="iv-block iv-ans-senior"><div class="iv-block-title">🏆 Senior-Level Answer</div>' + renderNotes(q.seniorAnswer) + '</div>';
     if (q.analogy) html += '<div class="iv-block iv-analogy"><div class="iv-block-title">🏠 Real-Life Analogy</div>' + renderNotes(q.analogy) + '</div>';
     if (q.code) html += '<div class="iv-block"><div class="iv-block-title">💻 Code Example</div><pre class="diagram-box">' + highlight(q.code) + '</pre>' + (q.output ? '<div class="iv-output">Output: ' + escapeHtml(q.output) + '</div>' : '') + '</div>';
 
@@ -904,7 +1031,16 @@
     if (q.mistakes) html += '<div class="iv-block iv-mistake"><div class="iv-block-title">⚠️ Common Mistakes</div>' + escapeHtml(q.mistakes) + '</div>';
     if (q.bestPractices) html += '<div class="iv-block iv-best"><div class="iv-block-title">⭐ Best Practices</div>' + escapeHtml(q.bestPractices) + '</div>';
     if (q.followUps && q.followUps.length) html += '<div class="iv-block"><div class="iv-block-title">🔗 Follow-up Questions</div><ul>' + q.followUps.map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join("") + '</ul></div>';
+    if (q.expectedKeywords && q.expectedKeywords.length) html += '<div class="iv-block iv-keywords"><div class="iv-block-title">🎯 Interviewer expects keywords</div>' + q.expectedKeywords.map(function(k){return '<span class="iv-kw">'+escapeHtml(k)+'</span>';}).join(" ") + '</div>';
     if (q.tips) html += '<div class="iv-block iv-tip"><div class="iv-block-title">💡 Tip to Answer Confidently</div>' + escapeHtml(q.tips) + '</div>';
+
+    // Progress action bar
+    html += '<div class="iv-card-actions">' +
+      '<button class="iv-act-btn iv-act-bm' + (isBm ? " active" : "") + '" data-act="bm">' + (isBm ? "🔖 Bookmarked" : "🔖 Bookmark") + '</button>' +
+      '<button class="iv-act-btn iv-act-studied' + (isStudied ? " active" : "") + '" data-act="studied">' + (isStudied ? "✓ Studied" : "○ Mark studied") + '</button>' +
+      '<button class="iv-act-btn iv-act-correct' + (isCorrect ? " active" : "") + '" data-act="correct">✅ Got it right</button>' +
+      '<button class="iv-act-btn iv-act-incorrect' + (isIncorrect ? " active" : "") + '" data-act="incorrect">❌ Need to review</button>' +
+      '</div>';
 
     body.innerHTML = html;
 
@@ -914,9 +1050,262 @@
       header.classList.toggle("open", show);
     });
 
+    // Action buttons
+    body.querySelectorAll(".iv-act-btn").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var act = this.dataset.act;
+        if (!window.DPProgress) return;
+        if (act === "bm")        { window.DPProgress.toggleBookmark(index); this.classList.toggle("active"); this.textContent = window.DPProgress.isBookmarked(index) ? "🔖 Bookmarked" : "🔖 Bookmark"; }
+        else if (act === "studied")   { window.DPProgress.toggleStudied(index); var s = window.DPProgress.isStudied(index); this.classList.toggle("active", s); this.textContent = s ? "✓ Studied" : "○ Mark studied"; card.classList.toggle("studied", s); }
+        else if (act === "correct")   { window.DPProgress.markCorrect(index); body.querySelector('[data-act="correct"]').classList.add("active"); body.querySelector('[data-act="incorrect"]').classList.remove("active"); }
+        else if (act === "incorrect") { window.DPProgress.markIncorrect(index); body.querySelector('[data-act="incorrect"]').classList.add("active"); body.querySelector('[data-act="correct"]').classList.remove("active"); }
+      });
+    });
+
     card.appendChild(header);
     card.appendChild(body);
     return card;
+  }
+
+  function renderPagination(current, total, onGo) {
+    var pag = el("div", "iv-pagination");
+    function b(label, page, disabled, active) {
+      var btn = el("button", "iv-pg-btn" + (active ? " active" : "") + (disabled ? " disabled" : ""));
+      btn.textContent = label;
+      if (!disabled && !active) btn.addEventListener("click", function () { onGo(page); });
+      if (disabled) btn.disabled = true;
+      return btn;
+    }
+    pag.appendChild(b("« First", 1, current === 1));
+    pag.appendChild(b("‹ Prev", current - 1, current === 1));
+    // window of 5
+    var start = Math.max(1, current - 2), end = Math.min(total, current + 2);
+    if (start > 1) pag.appendChild(el("span", "iv-pg-dot", "…"));
+    for (var i = start; i <= end; i++) pag.appendChild(b(String(i), i, false, i === current));
+    if (end < total) pag.appendChild(el("span", "iv-pg-dot", "…"));
+    pag.appendChild(b("Next ›", current + 1, current === total));
+    pag.appendChild(b("Last »", total, current === total));
+    return pag;
+  }
+
+  /* ---------- Rapid Fire Page ---------- */
+  function renderInterviewRapidFire() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data || !data.rapidFire) { content.innerHTML = '<div class="ai-error">Rapid-fire data not loaded.</div>'; return; }
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">⚡</span> Rapid Fire</h1>' +
+      '<p class="iv-subtitle">One question at a time. Read the question, think for 5 seconds, then reveal the answer. Practice until they\'re automatic.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("rapid"));
+
+    var wrap = el("div", "rf-wrap");
+    var state = { idx: 0, revealed: false, order: data.rapidFire.map(function(_,i){return i;}) };
+    // shuffle
+    for (var i = state.order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = state.order[i]; state.order[i] = state.order[j]; state.order[j] = t;
+    }
+
+    var card = el("div", "rf-card");
+    var progress = el("div", "rf-progress");
+    var qBlock = el("div", "rf-question");
+    var aBlock = el("div", "rf-answer"); aBlock.style.display = "none";
+    var controls = el("div", "rf-controls");
+    var revealBtn = el("button", "rf-btn rf-reveal", "👁 Reveal Answer");
+    var nextBtn = el("button", "rf-btn rf-next", "Next Question →");
+    var prevBtn = el("button", "rf-btn rf-prev", "← Previous");
+    var shuffleBtn = el("button", "rf-btn rf-shuffle", "🔀 Shuffle");
+    controls.appendChild(prevBtn); controls.appendChild(revealBtn); controls.appendChild(nextBtn); controls.appendChild(shuffleBtn);
+    card.appendChild(progress); card.appendChild(qBlock); card.appendChild(aBlock); card.appendChild(controls);
+    wrap.appendChild(card);
+
+    function paint() {
+      var qa = data.rapidFire[state.order[state.idx]];
+      progress.textContent = "Question " + (state.idx + 1) + " of " + state.order.length;
+      qBlock.innerHTML = '<span class="rf-q-label">Q.</span>' + escapeHtml(qa.q);
+      aBlock.innerHTML = '<span class="rf-a-label">A.</span>' + escapeHtml(qa.a);
+      aBlock.style.display = state.revealed ? "block" : "none";
+      revealBtn.textContent = state.revealed ? "🙈 Hide Answer" : "👁 Reveal Answer";
+    }
+    paint();
+
+    revealBtn.addEventListener("click", function () { state.revealed = !state.revealed; paint(); });
+    nextBtn.addEventListener("click", function () { state.idx = (state.idx + 1) % state.order.length; state.revealed = false; paint(); });
+    prevBtn.addEventListener("click", function () { state.idx = (state.idx - 1 + state.order.length) % state.order.length; state.revealed = false; paint(); });
+    shuffleBtn.addEventListener("click", function () {
+      for (var i = state.order.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = state.order[i]; state.order[i] = state.order[j]; state.order[j] = t;
+      }
+      state.idx = 0; state.revealed = false; paint();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (!$("#content").querySelector(".rf-card")) return; // only when this page is up
+      if (e.key === "ArrowRight") { nextBtn.click(); }
+      else if (e.key === "ArrowLeft") { prevBtn.click(); }
+      else if (e.key === " " || e.key === "Enter") { e.preventDefault(); revealBtn.click(); }
+    });
+
+    page.appendChild(wrap);
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Rapid Fire | Interview Prep";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ---------- By-Round Page ---------- */
+  function renderInterviewRounds() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🎯</span> Interview Rounds</h1>' +
+      '<p class="iv-subtitle">Prepare round-by-round. Click any round to focus your practice on that stage.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("rounds"));
+
+    var grid = el("div", "iv-rounds-grid");
+    (data.rounds || []).forEach(function (r) {
+      var count = data.questions.filter(function (q) { return q.round === r.id; }).length;
+      var card = el("a", "iv-round-card");
+      card.href = "#/interview";
+      card.innerHTML = '<div class="iv-round-icon">' + r.icon + '</div>' +
+        '<div class="iv-round-name">' + escapeHtml(r.name) + '</div>' +
+        '<div class="iv-round-topics">' + r.topics.map(function (t) { return '<span class="iv-round-topic">' + escapeHtml(t) + '</span>'; }).join("") + '</div>' +
+        '<div class="iv-round-count">' + count + ' tagged questions</div>';
+      card.addEventListener("click", function (e) {
+        e.preventDefault();
+        interviewFilters = { level:"", difficulty:"", company:"", search:"", frequency:"", round:r.id, questionType:"", showBookmarked:false, showStudied:null };
+        location.hash = "#/interview";
+      });
+      grid.appendChild(card);
+    });
+    page.appendChild(grid);
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Rounds | Interview Prep";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ---------- Dashboard Page ---------- */
+  function renderInterviewDashboard() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">📊</span> Interview Readiness Dashboard</h1>' +
+      '<p class="iv-subtitle">Track your progress. Everything is stored locally in your browser — no signup, no server.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("dash"));
+
+    var m = window.DPProgress.computeMetrics(data.questions);
+
+    var summary = el("div", "dash-summary");
+    function stat(label, value, sub) {
+      return '<div class="dash-stat"><div class="dash-stat-value">' + value + '</div><div class="dash-stat-label">' + label + '</div>' + (sub ? '<div class="dash-stat-sub">' + sub + '</div>' : '') + '</div>';
+    }
+    summary.innerHTML =
+      stat("Questions Studied",  m.studied + "<span class='dash-of'>/" + m.total + "</span>", m.coverage + "% covered") +
+      stat("Correct",             m.correct,   "self-marked") +
+      stat("Need to Review",      m.incorrect, "self-marked") +
+      stat("Accuracy",             m.accuracy + "%", (m.correct + m.incorrect) + " attempts") +
+      stat("Bookmarked",           m.bookmarked, "saved") +
+      stat("Current Streak",       (m.streak.days || 0) + "d", "consecutive days");
+    page.appendChild(summary);
+
+    // Readiness bars
+    var readiness = el("div", "dash-readiness");
+    readiness.innerHTML = '<h2 class="dash-h2">🎯 Readiness Score</h2>';
+    var bands = [
+      { key: "beginner", label: "Beginner Readiness (Level 0-1)" },
+      { key: "junior",   label: "Junior Readiness (Level 2-3)" },
+      { key: "mid",      label: "Mid-Level Readiness (Level 4)" },
+      { key: "senior",   label: "Senior Readiness (Level 5-6)" },
+      { key: "expert",   label: "Expert / Architect (Level 7)" }
+    ];
+    bands.forEach(function (b) {
+      var pct = m.readiness[b.key];
+      readiness.innerHTML += '<div class="dash-band"><div class="dash-band-label">' + b.label + '<span class="dash-band-pct">' + pct + '%</span></div>' +
+        '<div class="dash-band-bar"><div class="dash-band-fill" style="width:' + pct + '%"></div></div></div>';
+    });
+    readiness.innerHTML += '<div class="dash-overall">Overall readiness: <b>' + m.overall + '%</b></div>';
+    page.appendChild(readiness);
+
+    // Per-topic breakdown (studied/total)
+    var perTopic = el("div", "dash-topics");
+    perTopic.innerHTML = '<h2 class="dash-h2">📚 Coverage by Topic</h2>';
+    var topicKeys = Object.keys(m.perTopic).sort();
+    var topicGrid = el("div", "dash-topic-grid");
+    topicKeys.forEach(function (k) {
+      var t = m.perTopic[k];
+      var pct = t.total > 0 ? Math.round((t.studied / t.total) * 100) : 0;
+      topicGrid.innerHTML += '<div class="dash-topic"><div class="dash-topic-name">' + escapeHtml(k) + '</div>' +
+        '<div class="dash-topic-nums">' + t.studied + '/' + t.total + '</div>' +
+        '<div class="dash-band-bar"><div class="dash-band-fill" style="width:' + pct + '%"></div></div></div>';
+    });
+    perTopic.appendChild(topicGrid);
+    page.appendChild(perTopic);
+
+    // Weak / strong
+    if (m.weak.length || m.strong.length) {
+      var ws = el("div", "dash-ws");
+      ws.innerHTML = '<h2 class="dash-h2">⚖️ Strengths & Weaknesses</h2>';
+      var col1 = '<div class="dash-ws-col"><h3>⚠️ Weak Topics</h3>' + (m.weak.length ? m.weak.map(function (w) {
+        return '<div class="dash-ws-row">' + escapeHtml(w.topic) + ' <span>' + Math.round(w.accuracy * 100) + '% (' + w.attempted + ' tries)</span></div>';
+      }).join("") : '<div class="dash-empty">Attempt a few questions first!</div>') + '</div>';
+      var col2 = '<div class="dash-ws-col"><h3>💪 Strong Topics</h3>' + (m.strong.length ? m.strong.map(function (s) {
+        return '<div class="dash-ws-row">' + escapeHtml(s.topic) + ' <span>' + Math.round(s.accuracy * 100) + '% (' + s.attempted + ' tries)</span></div>';
+      }).join("") : '<div class="dash-empty">Attempt a few questions first!</div>') + '</div>';
+      ws.innerHTML += col1 + col2;
+      page.appendChild(ws);
+    }
+
+    // Reset
+    var resetWrap = el("div", "dash-reset-wrap");
+    var resetBtn = el("button", "dash-reset-btn", "🗑️ Reset all interview progress");
+    resetBtn.addEventListener("click", function () {
+      if (confirm("Reset all your bookmarks, studied marks, correct/incorrect marks and streak? This cannot be undone.")) {
+        window.DPProgress.reset();
+        renderInterviewDashboard();
+      }
+    });
+    resetWrap.appendChild(resetBtn);
+    page.appendChild(resetWrap);
+
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Dashboard | Interview Prep";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ---------- Study Plans Page ---------- */
+  function renderInterviewPlans() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">📅</span> Interview Study Plans</h1>' +
+      '<p class="iv-subtitle">Structured prep from 1 day to 90 days. Pick the plan that matches your timeline.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("plans"));
+
+    var grid = el("div", "iv-plans-grid");
+    (data.studyPlans || []).forEach(function (p) {
+      var card = el("div", "iv-plan-card");
+      card.innerHTML = '<div class="iv-plan-head">' +
+        '<span class="iv-plan-dur">' + escapeHtml(p.duration) + '</span>' +
+        '<span class="iv-plan-audience">' + escapeHtml(p.audience) + '</span></div>' +
+        '<ol class="iv-plan-steps">' + p.steps.map(function (s) { return '<li>' + escapeHtml(s) + '</li>'; }).join("") + '</ol>';
+      grid.appendChild(card);
+    });
+    page.appendChild(grid);
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Study Plans | Interview Prep";
+    content.focus(); window.scrollTo(0, 0);
   }
 
   function copyText(text) {
@@ -964,6 +1353,10 @@
     var hash = currentRoute();
     if (/^#\/workspace/.test(hash)) { renderWorkspace(); }
     else if (/^#\/ai-explain/.test(hash)) { renderAIExplain(); }
+    else if (/^#\/interview\/rapid-fire/.test(hash)) { renderInterviewRapidFire(); }
+    else if (/^#\/interview\/rounds/.test(hash)) { renderInterviewRounds(); }
+    else if (/^#\/interview\/dashboard/.test(hash)) { renderInterviewDashboard(); }
+    else if (/^#\/interview\/plans/.test(hash)) { renderInterviewPlans(); }
     else if (/^#\/interview/.test(hash)) { renderInterview(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);

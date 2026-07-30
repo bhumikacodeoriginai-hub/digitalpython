@@ -925,3 +925,188 @@ body::after {
   .content { padding: 20px 15px 80px; }
   .page-nav { flex-direction: column; }
 }
+
+
+/* ============================================================
+   PHASE 1 — Interview upgrade: tabs, badges, dashboard, rapid-fire
+   ============================================================ */
+
+/* --- Tabs on interview page --- */
+.iv-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: -12px 0 20px; }
+.iv-tab {
+  padding: 10px 16px; border-radius: 999px;
+  background: var(--bg-elev); color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  text-decoration: none; font-weight: 600; font-size: 14px;
+  transition: all .18s ease; white-space: nowrap;
+}
+.iv-tab:hover { background: var(--bg-elev-2); color: var(--text); border-color: var(--border); }
+.iv-tab.active { background: var(--grad-brand); color: #fff; border-color: transparent; box-shadow: var(--shadow-sm); }
+
+/* --- New filter controls --- */
+.iv-toggle-btn {
+  padding: 8px 14px; border-radius: 999px;
+  background: var(--bg-elev); color: var(--text-dim);
+  border: 1px solid var(--border-soft); cursor: pointer;
+  font-weight: 600; font-size: 13px; transition: all .18s;
+}
+.iv-toggle-btn:hover { background: var(--bg-elev-2); color: var(--text); }
+.iv-toggle-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* --- Badges (frequency, round, type) --- */
+.iv-freq { font-size: 13px; letter-spacing: -1px; padding: 2px 4px; }
+.iv-freq-extreme { color: #ff3333; text-shadow: 0 0 6px rgba(255,60,60,.4); }
+.iv-freq-very    { color: #ff6633; }
+.iv-freq-often   { color: #ff9944; }
+.iv-freq-common  { color: #ffbb66; }
+.iv-freq-rare    { color: #aaaa66; opacity: .8; }
+.iv-round-badge { background: var(--bg-elev-2); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--text); border: 1px solid var(--border-soft); }
+.iv-type-badge  { font-size: 15px; }
+.iv-badges { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+
+/* --- Studied state on card --- */
+.iv-card.studied { border-left: 3px solid #22c55e; }
+.iv-card.studied .iv-q-text::before { content: "✓ "; color: #22c55e; font-weight: 700; }
+
+/* --- Card action bar --- */
+.iv-card-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border-soft);
+}
+.iv-act-btn {
+  padding: 7px 12px; border-radius: 8px;
+  background: var(--bg-elev-2); color: var(--text-dim);
+  border: 1px solid var(--border-soft); cursor: pointer;
+  font-size: 12px; font-weight: 600; transition: all .18s;
+}
+.iv-act-btn:hover { background: var(--bg-elev); color: var(--text); }
+.iv-act-btn.active { color: #fff; border-color: transparent; }
+.iv-act-bm.active { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.iv-act-studied.active { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.iv-act-correct.active { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.iv-act-incorrect.active { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+/* --- Expected keywords --- */
+.iv-keywords .iv-kw {
+  display: inline-block; background: var(--accent-soft); color: var(--accent);
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  margin: 4px 4px 0 0;
+}
+
+/* --- 3-level answer variants --- */
+.iv-ans-beginner { background: rgba(34,197,94,.08); border-left: 3px solid #22c55e; padding-left: 12px; }
+.iv-ans-pro { background: rgba(124,140,255,.08); border-left: 3px solid var(--accent); padding-left: 12px; }
+.iv-ans-senior { background: rgba(176,106,179,.08); border-left: 3px solid var(--accent-2); padding-left: 12px; }
+
+/* --- Pagination --- */
+.iv-pagination { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 24px 0; }
+.iv-pg-btn { padding: 8px 14px; border-radius: 8px; background: var(--bg-elev); color: var(--text); border: 1px solid var(--border-soft); cursor: pointer; font-weight: 600; font-size: 13px; transition: all .18s; }
+.iv-pg-btn:hover:not(.disabled):not(.active) { background: var(--bg-elev-2); border-color: var(--accent); }
+.iv-pg-btn.active { background: var(--grad-brand); color: #fff; border-color: transparent; }
+.iv-pg-btn.disabled { opacity: .35; cursor: not-allowed; }
+.iv-pg-dot { padding: 8px 4px; color: var(--text-faint); }
+
+.iv-count-sub { color: var(--text-faint); font-weight: 400; margin-left: 6px; font-size: 13px; }
+.iv-section-count { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; vertical-align: middle; }
+
+/* --- Rapid Fire --- */
+.rf-wrap { display: flex; justify-content: center; padding: 40px 0; }
+.rf-card {
+  width: 100%; max-width: 720px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 40px; box-shadow: var(--shadow);
+}
+.rf-progress { color: var(--text-faint); font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 22px; }
+.rf-question {
+  font-size: 24px; font-weight: 700; color: var(--text);
+  line-height: 1.4; padding: 24px 0; text-align: center;
+  min-height: 120px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+}
+.rf-q-label { color: var(--accent); font-size: 14px; font-weight: 800; }
+.rf-answer {
+  font-size: 18px; color: var(--text-dim); line-height: 1.6;
+  background: var(--accent-soft); border-left: 4px solid var(--accent);
+  padding: 20px 22px; border-radius: 12px; margin-top: 20px;
+  animation: fadeIn .3s ease;
+}
+.rf-a-label { display: block; color: var(--accent); font-size: 13px; font-weight: 800; margin-bottom: 6px; }
+.rf-controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 26px; }
+.rf-btn {
+  padding: 11px 18px; border-radius: 10px; font-weight: 700; font-size: 14px;
+  background: var(--bg-elev-2); color: var(--text); border: 1px solid var(--border);
+  cursor: pointer; transition: all .18s;
+}
+.rf-btn:hover { background: var(--bg-elev); border-color: var(--accent); }
+.rf-reveal { background: var(--grad-brand); color: #fff; border-color: transparent; }
+.rf-next { background: var(--grad-run); color: #fff; border-color: transparent; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* --- By-Round grid --- */
+.iv-rounds-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.iv-round-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; text-decoration: none; color: var(--text);
+  display: flex; flex-direction: column; gap: 8px; transition: all .18s;
+}
+.iv-round-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); border-color: var(--accent); }
+.iv-round-icon { font-size: 32px; }
+.iv-round-name { font-weight: 700; font-size: 16px; }
+.iv-round-topics { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.iv-round-topic { font-size: 11px; padding: 3px 8px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; font-weight: 600; }
+.iv-round-count { margin-top: 8px; color: var(--text-faint); font-size: 12px; font-weight: 600; }
+
+/* --- Dashboard --- */
+.dash-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
+.dash-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; }
+.dash-stat-value { font-size: 28px; font-weight: 800; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.dash-stat-label { color: var(--text-dim); font-size: 12px; font-weight: 600; margin-top: 4px; }
+.dash-stat-sub { color: var(--text-faint); font-size: 11px; margin-top: 2px; }
+.dash-of { color: var(--text-faint); font-size: 16px; font-weight: 400; -webkit-text-fill-color: var(--text-faint); }
+
+.dash-readiness, .dash-topics, .dash-ws { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin: 16px 0; }
+.dash-h2 { font-size: 18px; margin: 0 0 16px; color: var(--text); }
+.dash-band { margin-bottom: 14px; }
+.dash-band-label { display: flex; justify-content: space-between; font-weight: 600; color: var(--text); margin-bottom: 6px; font-size: 14px; }
+.dash-band-pct { color: var(--accent); font-weight: 800; }
+.dash-band-bar { height: 8px; border-radius: 4px; background: var(--bg-elev-2); overflow: hidden; }
+.dash-band-fill { height: 100%; background: var(--grad-brand); transition: width .5s ease; }
+.dash-overall { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--border-soft); font-size: 16px; color: var(--text-dim); }
+.dash-overall b { color: var(--accent); font-size: 20px; }
+
+.dash-topic-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.dash-topic { background: var(--bg-elev); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border-soft); }
+.dash-topic-name { font-weight: 700; font-size: 13px; color: var(--text); }
+.dash-topic-nums { font-size: 11px; color: var(--text-faint); margin: 2px 0 6px; }
+
+.dash-ws { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dash-ws-col h3 { font-size: 14px; margin: 0 0 10px; color: var(--text); }
+.dash-ws-row { padding: 8px 10px; background: var(--bg-elev); border-radius: 8px; margin-bottom: 6px; font-size: 13px; display: flex; justify-content: space-between; color: var(--text); }
+.dash-ws-row span { color: var(--text-faint); font-size: 12px; }
+.dash-empty { color: var(--text-faint); font-size: 13px; padding: 10px; }
+
+.dash-reset-wrap { text-align: center; margin: 30px 0; }
+.dash-reset-btn { padding: 10px 20px; border-radius: 10px; background: transparent; border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; font-size: 13px; }
+.dash-reset-btn:hover { color: #ef4444; border-color: #ef4444; }
+
+/* --- Study Plans --- */
+.iv-plans-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.iv-plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.iv-plan-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px dashed var(--border-soft); }
+.iv-plan-dur { font-size: 22px; font-weight: 800; background: var(--grad-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.iv-plan-audience { color: var(--text-faint); font-size: 12px; font-weight: 600; }
+.iv-plan-steps { margin: 0; padding-left: 22px; color: var(--text-dim); font-size: 13px; line-height: 1.7; }
+.iv-plan-steps li { margin-bottom: 6px; }
+
+/* --- Mobile tweaks --- */
+@media (max-width: 640px) {
+  .iv-tabs { justify-content: center; }
+  .iv-tab { padding: 8px 12px; font-size: 12px; }
+  .rf-card { padding: 24px 18px; border-radius: 16px; }
+  .rf-question { font-size: 19px; min-height: 90px; }
+  .rf-answer { font-size: 15px; padding: 14px 16px; }
+  .dash-ws { grid-template-columns: 1fr; }
+  .iv-badges { width: 100%; margin-top: 6px; }
+  .iv-card-actions { justify-content: flex-start; }
+  .iv-act-btn { flex: 1 1 auto; min-width: 45%; }
+}

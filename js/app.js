@@ -781,6 +781,7 @@
     var items = [
       { id: "browse",  label: "🔍 Browse",       hash: "#/interview" },
       { id: "rapid",   label: "⚡ Rapid Fire",   hash: "#/interview/rapid-fire" },
+      { id: "mock",    label: "🎤 Mock Interview", hash: "#/interview/mock" },
       { id: "rounds",  label: "🎯 By Round",     hash: "#/interview/rounds" },
       { id: "dash",    label: "📊 Dashboard",    hash: "#/interview/dashboard" },
       { id: "plans",   label: "📅 Study Plans",  hash: "#/interview/plans" }
@@ -1308,6 +1309,412 @@
     content.focus(); window.scrollTo(0, 0);
   }
 
+  /* ============================================================
+     MOCK INTERVIEW FLOW  (Phase 5)
+     Config screen -> Session screen -> Result screen
+     State stored in-memory + last result in localStorage
+     ============================================================ */
+  var MOCK_STATE = null; // { config, questions:[{q,index}], idx, answers:[{selfMark, timeSec}], startedAt }
+  var MOCK_LAST_RESULT_KEY = "dp-mock-last";
+  var MOCK_HISTORY_KEY = "dp-mock-history";
+
+  function saveMockResult(result) {
+    try {
+      localStorage.setItem(MOCK_LAST_RESULT_KEY, JSON.stringify(result));
+      var histRaw = localStorage.getItem(MOCK_HISTORY_KEY);
+      var hist = [];
+      if (histRaw) { try { hist = JSON.parse(histRaw) || []; } catch (e) {} }
+      hist.unshift({
+        startedAt: result.startedAt, endedAt: result.endedAt,
+        config: result.config, score: result.score, total: result.total, accuracy: result.accuracy
+      });
+      hist = hist.slice(0, 25);
+      localStorage.setItem(MOCK_HISTORY_KEY, JSON.stringify(hist));
+    } catch (e) {}
+  }
+  function loadMockHistory() {
+    try {
+      var raw = localStorage.getItem(MOCK_HISTORY_KEY);
+      return raw ? (JSON.parse(raw) || []) : [];
+    } catch (e) { return []; }
+  }
+
+  function renderMockConfig() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🎤</span> Mock Interview</h1>' +
+      '<p class="iv-subtitle">Configure your mock, get questions one by one, self-mark, and receive a full scorecard at the end.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("mock"));
+
+    var form = el("div", "mock-config");
+
+    function selectGroup(label, options, id, defaultVal) {
+      var wrap = el("div", "mock-field");
+      wrap.innerHTML = '<label class="mock-label">' + escapeHtml(label) + '</label>';
+      var sel = el("select", "mock-select"); sel.id = id;
+      sel.innerHTML = options.map(function (o) {
+        return '<option value="' + escapeHtml(o.value) + '"' + (o.value === defaultVal ? ' selected' : '') + '>' + escapeHtml(o.label) + '</option>';
+      }).join("");
+      wrap.appendChild(sel);
+      return wrap;
+    }
+
+    // Experience level
+    var expOpts = [{ value: "", label: "Any" }].concat((data.experienceLevels || []).map(function (l) { return { value: String(l.id), label: l.label + " · " + l.range }; }));
+    form.appendChild(selectGroup("Experience Level", expOpts, "mockExp", ""));
+
+    // Difficulty
+    var diffOpts = [{ value: "", label: "Any" }, { value: "Beginner", label: "Beginner" }, { value: "Easy", label: "Easy" }, { value: "Intermediate", label: "Intermediate" }, { value: "Advanced", label: "Advanced" }, { value: "Expert", label: "Expert" }];
+    form.appendChild(selectGroup("Difficulty", diffOpts, "mockDiff", ""));
+
+    // Round
+    var roundOpts = [{ value: "", label: "Any round" }].concat((data.rounds || []).map(function (r) { return { value: r.id, label: r.icon + " " + r.name }; }));
+    form.appendChild(selectGroup("Interview Round", roundOpts, "mockRound", ""));
+
+    // Question Type
+    var typeOpts = [{ value: "", label: "Any type" }].concat((data.questionTypes || []).map(function (t) { return { value: t.id, label: t.icon + " " + t.label }; }));
+    form.appendChild(selectGroup("Question Type", typeOpts, "mockType", ""));
+
+    // Topic
+    var topicOpts = [{ value: "", label: "All topics" }].concat((data.levels || []).map(function (l) { return { value: l, label: l }; }));
+    form.appendChild(selectGroup("Topic", topicOpts, "mockTopic", ""));
+
+    // Company style
+    var companies = data.companiesExtended || data.companies || [];
+    var compOpts = [{ value: "", label: "Any company" }].concat(companies.map(function (c) { return { value: c, label: c }; }));
+    form.appendChild(selectGroup("Company Style", compOpts, "mockCompany", ""));
+
+    // Number of questions
+    var countOpts = [{ value: "5", label: "5 questions (quick)" }, { value: "10", label: "10 questions" }, { value: "15", label: "15 questions" }, { value: "20", label: "20 questions (real interview)" }, { value: "30", label: "30 questions (long)" }];
+    form.appendChild(selectGroup("How many questions?", countOpts, "mockCount", "10"));
+
+    // Start button
+    var actions = el("div", "mock-actions");
+    var startBtn = el("button", "mock-start-btn", "▶ Start Mock Interview");
+    actions.appendChild(startBtn);
+    form.appendChild(actions);
+
+    page.appendChild(form);
+
+    // Recent history
+    var hist = loadMockHistory();
+    if (hist.length) {
+      var histWrap = el("div", "mock-history");
+      histWrap.innerHTML = '<h2 class="dash-h2">🕓 Recent Mock Interviews</h2>';
+      hist.slice(0, 5).forEach(function (h) {
+        var when = new Date(h.startedAt);
+        var pct = h.accuracy;
+        histWrap.innerHTML += '<div class="mock-history-row">' +
+          '<div class="mock-hist-when">' + when.toLocaleDateString() + ' ' + when.toLocaleTimeString().slice(0,5) + '</div>' +
+          '<div class="mock-hist-config">' + (h.config.round || 'Any round') + ' · ' + (h.config.difficulty || 'Any') + ' · ' + h.total + ' Qs</div>' +
+          '<div class="mock-hist-score mock-hist-' + (pct >= 75 ? 'good' : pct >= 50 ? 'okay' : 'weak') + '">' + h.score + '/' + h.total + ' · ' + pct + '%</div>' +
+          '</div>';
+      });
+      page.appendChild(histWrap);
+    }
+
+    content.appendChild(page);
+
+    startBtn.addEventListener("click", function () {
+      var config = {
+        expLevel:   $("#mockExp").value === "" ? null : parseInt($("#mockExp").value, 10),
+        difficulty: $("#mockDiff").value || null,
+        round:      $("#mockRound").value || null,
+        type:       $("#mockType").value || null,
+        level:      $("#mockTopic").value || null,
+        company:    $("#mockCompany").value || null,
+        count:      parseInt($("#mockCount").value, 10) || 10
+      };
+      // Filter empty values for pickMockQuestions
+      var pickOpts = { count: config.count };
+      if (config.difficulty) pickOpts.difficulty = config.difficulty;
+      if (config.round)      pickOpts.round = config.round;
+      if (config.level)      pickOpts.level = config.level;
+      if (config.type)       pickOpts.type = config.type;
+      if (config.company)    pickOpts.company = config.company;
+      if (config.expLevel != null) pickOpts.expLevel = config.expLevel;
+      var picks = data.pickMockQuestions(pickOpts);
+      if (!picks.length) {
+        alert("No questions match this configuration. Try loosening the filters.");
+        return;
+      }
+      MOCK_STATE = {
+        config: config,
+        questions: picks,
+        idx: 0,
+        answers: picks.map(function () { return { selfMark: null, timeSec: 0, revealed: false }; }),
+        startedAt: Date.now(),
+        qStart: Date.now()
+      };
+      location.hash = "#/interview/mock/session";
+    });
+
+    highlightSidebar(null, null);
+    document.title = "Mock Interview | Interview Prep";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  function renderMockSession() {
+    var content = $("#content"); content.innerHTML = "";
+    if (!MOCK_STATE) { location.hash = "#/interview/mock"; return; }
+    var s = MOCK_STATE;
+    var total = s.questions.length;
+    var page = el("div", "interview-page mock-session");
+
+    var cur = s.questions[s.idx];
+    var q = cur.q;
+    var progressPct = Math.round(((s.idx) / total) * 100);
+
+    // Header
+    var head = el("div", "mock-session-head");
+    head.innerHTML =
+      '<div class="mock-progress-info">Question <b>' + (s.idx + 1) + '</b> of <b>' + total + '</b>' +
+        (q.round && window.DP_INTERVIEW.getRound(q.round) ? ' · <span class="iv-round-badge">' + window.DP_INTERVIEW.getRound(q.round).icon + ' ' + q.round + '</span>' : '') +
+        (q.difficulty ? ' · <span class="iv-diff diff-' + q.difficulty.toLowerCase() + '">' + escapeHtml(q.difficulty) + '</span>' : '') +
+        (q.questionType && window.DP_INTERVIEW.getQuestionType(q.questionType) ? ' · <span class="iv-type-badge" title="' + window.DP_INTERVIEW.getQuestionType(q.questionType).label + '">' + window.DP_INTERVIEW.getQuestionType(q.questionType).icon + '</span>' : '') +
+      '</div>' +
+      '<div class="mock-progress-bar"><div class="mock-progress-fill" style="width:' + progressPct + '%"></div></div>' +
+      '<div class="mock-timer" id="mockTimer">⏱ 00:00</div>';
+    page.appendChild(head);
+
+    // Question card
+    var qCard = el("div", "mock-q-card");
+    qCard.innerHTML =
+      '<div class="mock-q-label">Interviewer asks:</div>' +
+      '<div class="mock-q-text">' + escapeHtml(q.q) + '</div>' +
+      (q.company ? '<div class="mock-q-meta">Commonly asked at: ' + q.company.map(escapeHtml).join(", ") + '</div>' : '');
+    page.appendChild(qCard);
+
+    // Reveal / answer area
+    var revealBox = el("div", "mock-reveal");
+    var answerBox = el("div", "mock-answer"); answerBox.style.display = "none";
+    revealBox.innerHTML = '<button class="mock-reveal-btn" id="mockReveal">👁 Reveal Answer & Self-Assess</button>' +
+      '<div class="mock-hint">Think about your answer, then reveal. Be honest when self-marking.</div>';
+    page.appendChild(revealBox);
+    page.appendChild(answerBox);
+
+    // Nav
+    var nav = el("div", "mock-nav");
+    var quitBtn = el("button", "mock-nav-btn", "✖ Quit");
+    var prevBtn = el("button", "mock-nav-btn", "← Previous");
+    var skipBtn = el("button", "mock-nav-btn", "⏭ Skip");
+    var nextBtn = el("button", "mock-nav-btn mock-next", (s.idx === total - 1 ? "🏁 Finish" : "Next →"));
+    nav.appendChild(quitBtn); nav.appendChild(prevBtn); nav.appendChild(skipBtn); nav.appendChild(nextBtn);
+    page.appendChild(nav);
+
+    content.appendChild(page);
+
+    // Timer for this question
+    s.qStart = Date.now();
+    var timerEl = $("#mockTimer");
+    var timerInterval = setInterval(function () {
+      if (!$("#mockTimer")) { clearInterval(timerInterval); return; }
+      var sec = Math.floor((Date.now() - s.qStart) / 1000);
+      var m = String(Math.floor(sec / 60)).padStart(2, "0");
+      var ss = String(sec % 60).padStart(2, "0");
+      timerEl.textContent = "⏱ " + m + ":" + ss;
+    }, 500);
+    function stopTimer() { clearInterval(timerInterval); return Math.floor((Date.now() - s.qStart) / 1000); }
+
+    function reveal() {
+      s.answers[s.idx].revealed = true;
+      answerBox.style.display = "block";
+      revealBox.style.display = "none";
+      var html = '<div class="mock-a-label">✅ Expected Answer</div>' +
+        '<div class="mock-a-text">' + renderNotes(q.answer || "(no answer stored)") + '</div>';
+      if (q.code) html += '<div class="mock-a-code"><pre class="diagram-box">' + highlight(q.code) + '</pre>' + (q.output ? '<div class="iv-output">Output: ' + escapeHtml(q.output) + '</div>' : '') + '</div>';
+      if (q.expectedKeywords && q.expectedKeywords.length) html += '<div class="mock-a-kw"><b>Interviewer expects these keywords:</b> ' + q.expectedKeywords.map(function(k){return '<span class="iv-kw">'+escapeHtml(k)+'</span>';}).join(" ") + '</div>';
+      if (q.tips) html += '<div class="mock-a-tip">💡 <b>Tip:</b> ' + escapeHtml(q.tips) + '</div>';
+
+      // Self-assessment
+      html += '<div class="mock-selfmark"><div class="mock-selfmark-label">How did you do?</div>' +
+        '<button class="mock-mark mock-mark-good" data-mark="correct">✅ Nailed it</button>' +
+        '<button class="mock-mark mock-mark-mid" data-mark="partial">⚠️ Partial — got the idea</button>' +
+        '<button class="mock-mark mock-mark-bad" data-mark="incorrect">❌ Missed it</button>' +
+        '</div>';
+      answerBox.innerHTML = html;
+
+      answerBox.querySelectorAll(".mock-mark").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          answerBox.querySelectorAll(".mock-mark").forEach(function (b) { b.classList.remove("active"); });
+          this.classList.add("active");
+          s.answers[s.idx].selfMark = this.dataset.mark;
+          // also save to global DPProgress if correct/incorrect
+          if (window.DPProgress) {
+            if (this.dataset.mark === "correct")   window.DPProgress.markCorrect(cur.index);
+            if (this.dataset.mark === "incorrect") window.DPProgress.markIncorrect(cur.index);
+            if (this.dataset.mark === "partial")   window.DPProgress.markIncorrect(cur.index);
+            if (!window.DPProgress.isStudied(cur.index)) window.DPProgress.toggleStudied(cur.index);
+          }
+        });
+      });
+    }
+
+    $("#mockReveal").addEventListener("click", reveal);
+    quitBtn.addEventListener("click", function () {
+      if (confirm("Quit this mock? Progress will not be saved.")) { stopTimer(); MOCK_STATE = null; location.hash = "#/interview/mock"; }
+    });
+    prevBtn.addEventListener("click", function () {
+      if (s.idx === 0) return;
+      s.answers[s.idx].timeSec = stopTimer();
+      s.idx--;
+      renderMockSession();
+    });
+    skipBtn.addEventListener("click", function () {
+      s.answers[s.idx].timeSec = stopTimer();
+      s.answers[s.idx].selfMark = "skip";
+      goNext();
+    });
+    nextBtn.addEventListener("click", function () {
+      s.answers[s.idx].timeSec = stopTimer();
+      goNext();
+    });
+    function goNext() {
+      if (s.idx === total - 1) {
+        location.hash = "#/interview/mock/result";
+      } else {
+        s.idx++;
+        renderMockSession();
+      }
+    }
+
+    highlightSidebar(null, null);
+    document.title = "Mock Q" + (s.idx + 1) + " | Interview";
+    window.scrollTo(0, 0);
+  }
+
+  function renderMockResult() {
+    var content = $("#content"); content.innerHTML = "";
+    if (!MOCK_STATE) { location.hash = "#/interview/mock"; return; }
+    var s = MOCK_STATE;
+    var total = s.questions.length;
+
+    var correct = 0, partial = 0, incorrect = 0, skipped = 0, unanswered = 0;
+    var totalTime = 0;
+    var perTopic = {};
+    s.answers.forEach(function (a, i) {
+      var topic = s.questions[i].q.level || "Uncategorised";
+      if (!perTopic[topic]) perTopic[topic] = { total:0, correct:0, partial:0, wrong:0 };
+      perTopic[topic].total++;
+      if (a.selfMark === "correct")        { correct++;   perTopic[topic].correct++; }
+      else if (a.selfMark === "partial")    { partial++;  perTopic[topic].partial++; }
+      else if (a.selfMark === "incorrect")  { incorrect++; perTopic[topic].wrong++; }
+      else if (a.selfMark === "skip")       { skipped++;  perTopic[topic].wrong++; }
+      else                                  { unanswered++; }
+      totalTime += a.timeSec || 0;
+    });
+    var attempted = correct + partial + incorrect;
+    var score = correct + (partial * 0.5);
+    var accuracy = attempted > 0 ? Math.round((score / attempted) * 100) : 0;
+    var overall = total > 0 ? Math.round((score / total) * 100) : 0;
+
+    var endedAt = Date.now();
+    saveMockResult({
+      startedAt: s.startedAt, endedAt: endedAt, config: s.config,
+      score: score, total: total, accuracy: accuracy,
+      correct: correct, partial: partial, incorrect: incorrect, skipped: skipped, unanswered: unanswered,
+      totalTime: totalTime, perTopic: perTopic
+    });
+
+    var page = el("div", "interview-page mock-result");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🏆</span> Mock Interview — Scorecard</h1>' +
+      '<p class="iv-subtitle">Here\'s how you did. Weak topics are highlighted — go review them next.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("mock"));
+
+    // Big score
+    var scoreBand = accuracy >= 85 ? "excellent" : accuracy >= 70 ? "good" : accuracy >= 50 ? "okay" : "weak";
+    var scoreLabel = accuracy >= 85 ? "🌟 Excellent — interview-ready" :
+                     accuracy >= 70 ? "💪 Strong — a little polish left" :
+                     accuracy >= 50 ? "📚 Good progress — keep going" :
+                                       "🎯 Room to grow — focus on weak topics";
+
+    var big = el("div", "mock-big-score mock-band-" + scoreBand);
+    big.innerHTML =
+      '<div class="mock-big-num">' + overall + '%</div>' +
+      '<div class="mock-big-frac">' + (Math.round(score * 10) / 10) + ' / ' + total + '</div>' +
+      '<div class="mock-big-label">' + scoreLabel + '</div>';
+    page.appendChild(big);
+
+    // Stat row
+    var stats = el("div", "dash-summary");
+    function stat(label, value, cls) {
+      return '<div class="dash-stat ' + (cls || "") + '"><div class="dash-stat-value">' + value + '</div><div class="dash-stat-label">' + label + '</div></div>';
+    }
+    stats.innerHTML =
+      stat("✅ Correct",   correct) +
+      stat("⚠️ Partial",   partial) +
+      stat("❌ Missed",    incorrect) +
+      stat("⏭ Skipped",   skipped) +
+      stat("Total Time",   Math.floor(totalTime / 60) + "m " + (totalTime % 60) + "s") +
+      stat("Avg / Q",      Math.round(totalTime / Math.max(1, total)) + "s");
+    page.appendChild(stats);
+
+    // Per topic
+    var topicsKeys = Object.keys(perTopic);
+    if (topicsKeys.length) {
+      var topicWrap = el("div", "mock-topics");
+      topicWrap.innerHTML = '<h2 class="dash-h2">📚 Performance by Topic</h2>';
+      var grid = el("div", "dash-topic-grid");
+      topicsKeys.forEach(function (k) {
+        var t = perTopic[k];
+        var att = t.correct + t.partial + t.wrong;
+        var pct = att > 0 ? Math.round(((t.correct + t.partial * 0.5) / att) * 100) : 0;
+        var cls = pct >= 70 ? "good" : pct >= 50 ? "okay" : "weak";
+        grid.innerHTML += '<div class="dash-topic mock-topic-' + cls + '">' +
+          '<div class="dash-topic-name">' + escapeHtml(k) + '</div>' +
+          '<div class="dash-topic-nums">' + t.correct + ' ✅ · ' + t.partial + ' ⚠️ · ' + t.wrong + ' ❌</div>' +
+          '<div class="dash-band-bar"><div class="dash-band-fill" style="width:' + pct + '%"></div></div>' +
+          '</div>';
+      });
+      topicWrap.appendChild(grid);
+      page.appendChild(topicWrap);
+    }
+
+    // Missed questions list (jump to them)
+    var missed = [];
+    s.answers.forEach(function (a, i) {
+      if (a.selfMark === "incorrect" || a.selfMark === "partial" || a.selfMark === "skip") missed.push({ q: s.questions[i].q, index: s.questions[i].index, mark: a.selfMark });
+    });
+    if (missed.length) {
+      var mWrap = el("div", "mock-missed");
+      mWrap.innerHTML = '<h2 class="dash-h2">📝 Review these questions</h2>';
+      missed.forEach(function (m, i) {
+        var icon = m.mark === "incorrect" ? "❌" : m.mark === "partial" ? "⚠️" : "⏭";
+        mWrap.innerHTML += '<div class="mock-missed-row">' +
+          '<span class="mock-missed-mark">' + icon + '</span>' +
+          '<span class="mock-missed-q">' + escapeHtml(m.q.q) + '</span>' +
+          '<span class="mock-missed-tag">' + escapeHtml(m.q.level || "") + '</span>' +
+          '</div>';
+      });
+      page.appendChild(mWrap);
+    }
+
+    // Actions
+    var actions = el("div", "mock-result-actions");
+    var againBtn = el("button", "mock-start-btn", "🔁 Start Another Mock");
+    var reviewBtn = el("button", "mock-nav-btn", "🔍 Browse missed topics");
+    againBtn.addEventListener("click", function () { MOCK_STATE = null; location.hash = "#/interview/mock"; });
+    reviewBtn.addEventListener("click", function () {
+      if (missed.length && missed[0].q.level) {
+        interviewFilters = { level: missed[0].q.level, difficulty: "", company: "", search: "", frequency: "", round: "", questionType: "", showBookmarked: false, showStudied: null };
+      }
+      location.hash = "#/interview";
+    });
+    actions.appendChild(againBtn); actions.appendChild(reviewBtn);
+    page.appendChild(actions);
+
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Mock Result | " + overall + "%";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
   function copyText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
     else fallbackCopy(text);
@@ -1357,6 +1764,9 @@
     else if (/^#\/interview\/rounds/.test(hash)) { renderInterviewRounds(); }
     else if (/^#\/interview\/dashboard/.test(hash)) { renderInterviewDashboard(); }
     else if (/^#\/interview\/plans/.test(hash)) { renderInterviewPlans(); }
+    else if (/^#\/interview\/mock\/session/.test(hash)) { renderMockSession(); }
+    else if (/^#\/interview\/mock\/result/.test(hash))  { renderMockResult(); }
+    else if (/^#\/interview\/mock/.test(hash))          { renderMockConfig(); }
     else if (/^#\/interview/.test(hash)) { renderInterview(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);

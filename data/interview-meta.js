@@ -326,9 +326,88 @@
     return null;
   };
 
-  /* Apply enrichment at load — non-destructive: only fills missing fields */
-  var enrichCount = 0;
+  /* ---------- P2: Bulk derivation ----------
+     Assigns round / questionType / frequency / expLevel to EVERY question
+     based on its existing level, difficulty and experience fields. */
+
+  /* Map from level -> default round */
+  var LEVEL_TO_ROUND = {
+    "Python Basics":            "R1",  "MCQ":                    "R1",
+    "Output-Based":             "R1",  "Rapid-Fire":             "R1",
+    "Control Flow":             "R2",  "Collections":            "R2",
+    "Functions":                "R2",  "File Handling":          "R2",
+    "OOP":                      "R2",  "Libraries":              "R2",
+    "Debugging":                "R2",  "Testing":                "R2",
+    "APIs":                     "R2",
+    "Coding Problems":          "R3",  "Data Structures":        "R3",
+    "Algorithms":               "R3",  "Database":               "R3",
+    "Database Deep-Dive":       "R3",
+    "Advanced Python":          "R4",  "Concurrency":            "R4",
+    "Python Internals":         "R4",  "AI/ML":                  "R4",
+    "LLM & AI Specialty":       "R4",  "Data Engineering":       "R4",
+    "Scenario-Based":           "R5",  "DevOps":                 "R5",
+    "Cloud":                    "R5",  "Frontend & Full-Stack":  "R5",
+    "Networking":               "R6",  "System Design":          "R6",
+    "Security":                 "R6",
+    "Company-Specific":         "R2",  // default; overridden per case
+    "HR & Behavioural":         "R8"
+  };
+
+  /* Map from level -> default questionType */
+  var LEVEL_TO_TYPE = {
+    "MCQ":                "mcq",         "Output-Based":       "output",
+    "Debugging":          "debug",       "Coding Problems":    "coding",
+    "Data Structures":    "coding",      "Algorithms":         "coding",
+    "Scenario-Based":     "scenario",    "System Design":      "system",
+    "Rapid-Fire":         "rapid",       "HR & Behavioural":   "hr"
+    // everything else -> "conceptual" (fallback)
+  };
+
+  /* Derive expLevel (0-7) from experience string */
+  function deriveExpLevel(exp) {
+    if (!exp) return 1;
+    var s = String(exp).toLowerCase();
+    if (/10\+|10\s*year|architect|principal/.test(s))              return 7;
+    if (/7-10|7\s*year|8\s*year|9\s*year|staff|lead/.test(s))       return 6;
+    if (/5-10|5-7|6-|senior/.test(s))                                return 5;
+    if (/3-5|3-7|3-8|4-|mid/.test(s))                                return 4;
+    if (/2-5|2-6|2-7|2-8|2-10/.test(s))                              return 3;
+    if (/1-5|1-4|1-6|1-7|1-8|1-10/.test(s))                          return 3;
+    if (/0-4|0-5|0-3|1-3/.test(s))                                   return 2;
+    if (/0-2|0-1|fresher|beginner|student/.test(s))                  return 1;
+    if (/all|any/.test(s))                                           return 3;
+    return 3;
+  }
+
+  /* Derive frequency from level + difficulty */
+  var HOT_LEVELS = { "Python Basics": true, "Control Flow": true, "Collections": true, "Functions": true, "OOP": true, "Output-Based": true, "MCQ": true, "Company-Specific": true };
+  var MEDIUM_LEVELS = { "File Handling": true, "Libraries": true, "Coding Problems": true, "Debugging": true, "HR & Behavioural": true, "Rapid-Fire": true, "APIs": true, "Database": true, "Testing": true };
+  function deriveFrequency(level, difficulty) {
+    if (HOT_LEVELS[level])    return difficulty === "Expert" ? "often"  : "very";
+    if (MEDIUM_LEVELS[level]) return difficulty === "Expert" ? "common" : "often";
+    if (difficulty === "Expert" || difficulty === "Advanced") return "common";
+    return "common";
+  }
+
+  /* Detect coding-style questions from the level string */
+  function looksCoding(level) {
+    var s = String(level || "").toLowerCase();
+    return s.indexOf("coding") !== -1 || s.indexOf("algorithm") !== -1 || s.indexOf("data structure") !== -1;
+  }
+
+  /* Round for Company-Specific: guess by looking at the question text */
+  function refineCompanyRound(q) {
+    var t = (q.q || "").toLowerCase();
+    if (/design a |scale|architecture|distributed|system/.test(t)) return "R6";
+    if (/coding|leetcode|find|two sum|palindrome|reverse|sort/.test(t)) return "R3";
+    if (/explain|difference|what is|how does/.test(t)) return "R2";
+    return "R2";
+  }
+
+  /* Apply derivation to every question — only fills missing fields */
+  var round_added = 0, type_added = 0, freq_upgraded = 0, exp_added = 0;
   IV.questions.forEach(function (q) {
+    // First try precise enrichment map
     var key = IV.enrichmentMap._norm(q.q);
     var extra = IV.enrichmentMap.byQuestion[key];
     if (extra) {
@@ -336,10 +415,58 @@
       if (!q.round)             q.round = extra.round;
       if (!q.questionType)      q.questionType = extra.questionType;
       if (!q.expectedKeywords)  q.expectedKeywords = extra.expectedKeywords;
-      enrichCount++;
     }
-    // Default frequency for un-enriched questions so filters still work
-    if (!q.frequency) q.frequency = "common";
+
+    // Round derivation
+    if (!q.round) {
+      if (q.level === "Company-Specific") q.round = refineCompanyRound(q);
+      else q.round = LEVEL_TO_ROUND[q.level] || "R2";
+      round_added++;
+    }
+
+    // Question type derivation
+    if (!q.questionType) {
+      if (looksCoding(q.level)) q.questionType = "coding";
+      else q.questionType = LEVEL_TO_TYPE[q.level] || "conceptual";
+      type_added++;
+    }
+
+    // Frequency: fill or upgrade default "common" using level/difficulty
+    var derived = deriveFrequency(q.level, q.difficulty);
+    if (!q.frequency) {
+      q.frequency = derived;
+    } else if (q.frequency === "common" && derived !== "common") {
+      q.frequency = derived;
+      freq_upgraded++;
+    }
+
+    // Experience level (numeric 0-7)
+    if (q.expLevel == null) {
+      q.expLevel = deriveExpLevel(q.experience);
+      exp_added++;
+    }
   });
-  // console.log("interview-meta.js: enriched", enrichCount, "questions");
+  // console.log("interview-meta.js P2 derivation:", { round_added, type_added, freq_upgraded, exp_added });
+
+  /* ---------- P5: Mock Interview scoring helpers ---------- */
+  IV.pickMockQuestions = function (opts) {
+    // opts: { count, difficulty, round, level, company, expLevel }
+    var pool = IV.questions.map(function (q, i) { return { q: q, index: i }; });
+    if (opts.difficulty) pool = pool.filter(function (x) { return x.q.difficulty === opts.difficulty; });
+    if (opts.round)      pool = pool.filter(function (x) { return x.q.round === opts.round; });
+    if (opts.level)      pool = pool.filter(function (x) { return x.q.level === opts.level; });
+    if (opts.type)       pool = pool.filter(function (x) { return x.q.questionType === opts.type; });
+    if (opts.expLevel != null) pool = pool.filter(function (x) { return Math.abs((x.q.expLevel || 3) - opts.expLevel) <= 1; });
+    if (opts.company)    pool = pool.filter(function (x) { return x.q.company && x.q.company.indexOf(opts.company) !== -1; });
+    // Prefer higher-frequency questions if pool is big enough
+    var freqW = { extreme:5, very:4, often:3, common:2, rare:1 };
+    pool.sort(function (a, b) { return (freqW[b.q.frequency] || 2) - (freqW[a.q.frequency] || 2); });
+    // Shuffle within the top 3x count, then take count
+    var top = pool.slice(0, Math.max(opts.count * 3, opts.count + 5));
+    for (var i2 = top.length - 1; i2 > 0; i2--) {
+      var j2 = Math.floor(Math.random() * (i2 + 1));
+      var tmp = top[i2]; top[i2] = top[j2]; top[j2] = tmp;
+    }
+    return top.slice(0, opts.count);
+  };
 })();

@@ -1,13 +1,87 @@
-/* Module 2 — Python Data Types (v3 — 65+ examples) */
+/* Module 2 — Python Data Types (v7 — Full 12-Step Teaching) */
 window.DP.registerModule({
   id: 2,
   title: "Python Data Types",
   icon: "🧮",
-  summary: "The built-in data types: numeric (int, float, complex), strings and their methods, booleans, lists, tuples, dictionaries and sets — with 65+ practical examples.",
+  summary: "Complete teaching of all built-in data types with analogies, diagrams, execution traces, common mistakes, interview questions and practice problems.",
   concepts: [
     {
       title: "Numeric Types: int, float, complex",
       badge: "Type · 12 examples",
+
+      introduction: [
+        "**What is it?** Data types tell Python what KIND of data you're storing. Numbers have 3 types:",
+        "- **int** (integer) — whole numbers like 1, 25, -7, 1000000",
+        "- **float** — decimal numbers like 3.14, 99.9, -0.5",
+        "- **complex** — special math numbers like 2+3j (used in engineering)",
+        "",
+        "**Why do we need different types?** Because Python stores and handles them differently:",
+        "- int: exact, no rounding errors, unlimited size",
+        "- float: has decimal points, may have tiny rounding errors",
+        "",
+        "**Where is it used?**",
+        "- Banking (int for paise/cents, float for amounts)",
+        "- E-commerce (prices, quantities)",
+        "- Science (measurements, calculations)",
+        "- Game development (scores, coordinates)"
+      ],
+
+      analogy: [
+        "**Think of it like different types of containers:**",
+        "",
+        "🔢 **int (Integer)** = A counting box",
+        "- Can only hold whole items: 1 apple, 5 books, 100 rupees",
+        "- No half items allowed",
+        "- Like counting students in a class: 42 (not 42.5!)",
+        "",
+        "🔢 **float (Decimal)** = A measuring cup",
+        "- Can measure exact amounts: 1.5 liters, 72.6 kg, 98.6°F",
+        "- Like a weighing scale that shows 72.5 kg",
+        "",
+        "🔢 **complex** = A 2D coordinate on a map",
+        "- Has two parts (real + imaginary) like latitude + longitude",
+        "- Used mainly by engineers and scientists"
+      ],
+
+      diagram: [
+        "┌────────────────────────────────────────────────────┐",
+        "│          PYTHON NUMBER TYPES                        │",
+        "├────────────────────────────────────────────────────┤",
+        "│                                                    │",
+        "│  ┌─────────┐  ┌─────────────┐  ┌──────────────┐  │",
+        "│  │   int   │  │    float    │  │   complex    │  │",
+        "│  │─────────│  │─────────────│  │──────────────│  │",
+        "│  │ 42      │  │ 3.14        │  │ 2 + 3j       │  │",
+        "│  │ -7      │  │ 99.9        │  │ 1 + 0j       │  │",
+        "│  │ 1000000 │  │ -0.001      │  │ 0 + 5j       │  │",
+        "│  │ 0       │  │ 2.0         │  │              │  │",
+        "│  └─────────┘  └─────────────┘  └──────────────┘  │",
+        "│                                                    │",
+        "│  Whole numbers   Decimal numbers  Real+Imaginary   │",
+        "│  (no dot)        (has a dot)      (has j)          │",
+        "└────────────────────────────────────────────────────┘",
+        "",
+        "  type(42)    → <class 'int'>",
+        "  type(3.14)  → <class 'float'>",
+        "  type(2+3j)  → <class 'complex'>"
+      ],
+
+      syntax: [
+        "**Creating numbers:**",
+        "- Integer: just write the number → `age = 25`",
+        "- Float: add a decimal point → `price = 99.5`",
+        "- Complex: add `j` for imaginary → `z = 2 + 3j`",
+        "",
+        "**Checking the type:**",
+        "- `type(value)` → tells you what type it is",
+        "- `isinstance(value, int)` → checks if it's a specific type (returns True/False)",
+        "",
+        "**Converting between types:**",
+        "- `int(3.7)` → 3 (removes decimal, does NOT round)",
+        "- `float(5)` → 5.0 (adds .0)",
+        "- `complex(2)` → (2+0j)"
+      ],
+
       notes: [
         "Python has three numeric types:",
         "- **int** — whole numbers of unlimited size.",
@@ -28,6 +102,45 @@ window.DP.registerModule({
         { title: "Check if integer", code: `x = 5.0\nprint(x.is_integer())`, output: `True` },
         { title: "Infinity and NaN", code: `inf = float("inf")\nnan = float("nan")\nprint(inf > 1000000, nan == nan)`, output: `True False` },
         { title: "Number formatting", code: `n = 1234567.89\nprint(f"{n:,.2f}")\nprint(f"{n:.2e}")`, output: `1,234,567.89\n1.23e+06` }
+      ],
+
+      mistakes: [
+        {
+          wrong: `x = 10\ny = "5"\nresult = x + y`,
+          right: `x = 10\ny = "5"\nresult = x + int(y)\nprint(result)`,
+          error: `TypeError: unsupported operand type(s) for +: 'int' and 'str'`,
+          explanation: "You cannot add a number and text directly. `\"5\"` is text (string), not a number. Use `int(\"5\")` to convert it first."
+        },
+        {
+          wrong: `print(0.1 + 0.2 == 0.3)`,
+          right: `print(round(0.1 + 0.2, 1) == 0.3)`,
+          error: `False (surprising!)`,
+          explanation: "Floating-point numbers have tiny precision errors. `0.1 + 0.2` gives `0.30000000000000004`, not exactly `0.3`. Use `round()` to compare floats safely."
+        }
+      ],
+
+      interview: [
+        { q: "What are the numeric data types in Python?", a: "Python has 3 numeric types: **int** (whole numbers), **float** (decimal numbers), and **complex** (real + imaginary numbers like 2+3j)." },
+        { q: "What happens when you divide two integers using /?", a: "The `/` operator ALWAYS returns a **float** in Python 3. Example: `6 / 2` gives `3.0` (not `3`). Use `//` for integer division." },
+        { q: "What is the maximum size of an integer in Python?", a: "Python integers have **no size limit** — they can be as large as your memory allows. This is different from languages like Java/C where int has a fixed size." }
+      ],
+
+      practice: [
+        { problem: "Create variables for: your age (int), your weight (float), and print their types.", difficulty: "Easy", hint: "Use type() to check" },
+        { problem: "Write a program to check if 0.1 + 0.2 equals 0.3 (and explain why it might not).", difficulty: "Medium", hint: "Try printing 0.1 + 0.2 first" },
+        { problem: "Convert the string '123' to an integer, multiply by 2, and print the result.", difficulty: "Easy", hint: "Use int() to convert" },
+        { problem: "Write a program that takes a complex number 3+4j and prints its real part, imaginary part, and magnitude.", difficulty: "Hard", hint: "Use .real, .imag, and abs()" }
+      ],
+
+      revision: [
+        "**Key Points:**",
+        "1. `int` = whole numbers (no decimal point): `42`, `-7`, `0`",
+        "2. `float` = decimal numbers: `3.14`, `99.0`, `-0.5`",
+        "3. `complex` = real + imaginary: `2+3j`",
+        "4. Use `type()` to check any value's type",
+        "5. Use `int()`, `float()`, `complex()` to convert between types",
+        "6. `/` always gives float; `//` gives integer division",
+        "7. Floats have tiny precision errors — use `round()` for comparisons"
       ]
     },
 

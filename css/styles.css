@@ -2202,3 +2202,123 @@ table { max-width: 100%; border-collapse: collapse; }
 table[data-scroll] { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* End production polish layer */
+
+
+/* ============================================================
+   MOBILE DRAWER FIX (Android / iOS Chrome & Safari)
+   Fixes: transparent sidebar bleed, oversized shortcut buttons,
+   drawer not closing on link tap, scrim not covering properly.
+   ============================================================ */
+
+/* --- Force opaque sidebar on ALL mobile widths --- */
+@media (max-width: 980px) {
+  .sidebar {
+    /* Override the 60% transparent base */
+    background: var(--bg) !important;
+    /* Give it a proper solid surface */
+    background-color: var(--bg-elev) !important;
+    background-image: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg) 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 40px rgba(0,0,0,.55) !important;
+    width: min(300px, 84vw) !important;
+    z-index: var(--z-sidebar) !important;
+  }
+
+  /* Compact sidebar top-shortcut buttons on mobile */
+  .ws-link {
+    margin: 3px 8px 6px !important;
+    padding: 10px 12px !important;
+    font-size: 13.5px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 12px rgba(22,163,74,.22) !important;
+    min-height: 42px;
+  }
+  .ws-link .ws-ico { font-size: 15px !important; }
+  .ai-link { box-shadow: 0 4px 12px rgba(109,94,252,.28) !important; }
+  .iv-link { box-shadow: 0 4px 12px rgba(34,197,94,.28) !important; }
+
+  /* Sidebar inner padding tighter on mobile */
+  .sidebar-inner {
+    padding: 10px 4px max(24px, env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  /* Sidebar-head labels tighter */
+  .sidebar-head { padding: 8px 12px 8px !important; margin-top: 6px !important; }
+
+  /* Sidebar nav items — tight but tappable */
+  .nav-mod {
+    padding: 10px 10px !important;
+    font-size: 13.5px !important;
+    min-height: 44px;
+  }
+  .nav-concept {
+    padding: 8px 12px !important;
+    min-height: 40px;
+    font-size: 12.5px !important;
+  }
+
+  /* Scrim MUST cover content when drawer open */
+  .scrim {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    background: transparent;
+    z-index: var(--z-scrim) !important;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease, background-color 200ms ease;
+  }
+  body.nav-open .scrim {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  /* Prevent body scroll when drawer is open */
+  body.nav-open {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* Sidebar itself must sit above the scrim */
+  body.nav-open .sidebar { z-index: calc(var(--z-scrim) + 1) !important; }
+}
+
+/* Extra polish for very narrow screens (< 400px) */
+@media (max-width: 400px) {
+  .sidebar { width: min(280px, 82vw) !important; }
+  .ws-link {
+    margin: 2px 6px 5px !important;
+    padding: 9px 11px !important;
+    font-size: 13px !important;
+  }
+  .ws-link .ws-ico { font-size: 14px !important; }
+  .nav-mod {
+    padding: 9px 10px !important;
+    font-size: 13px !important;
+  }
+  .nav-mod .nav-num {
+    width: 22px !important; height: 22px !important;
+    font-size: 10.5px !important;
+  }
+}
+
+/* Dark-mode specific: ensure real opacity */
+[data-theme="dark"] .sidebar {
+  background-color: #0d1220 !important;
+  background-image: linear-gradient(180deg, #121a2b 0%, #0a0e17 100%) !important;
+}
+[data-theme="light"] .sidebar {
+  background-color: #ffffff !important;
+  background-image: linear-gradient(180deg, #ffffff 0%, #f2f6fc 100%) !important;
+}
+
+/* Prevent tap-through highlight flicker */
+.sidebar a, .sidebar button {
+  -webkit-tap-highlight-color: transparent;
+}

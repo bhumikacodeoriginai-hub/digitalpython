@@ -2748,6 +2748,31 @@
     $("#menuToggle").addEventListener("click", function () { document.body.classList.toggle("nav-open"); });
     $("#scrim").addEventListener("click", function () { document.body.classList.remove("nav-open"); });
 
+    /* Auto-close mobile drawer on link taps + route changes */
+    function closeMobileNav() {
+      if (window.innerWidth <= 980 && document.body.classList.contains("nav-open")) {
+        document.body.classList.remove("nav-open");
+      }
+    }
+    /* Any anchor inside the sidebar closes the drawer */
+    document.addEventListener("click", function (e) {
+      var target = e.target;
+      if (!target) return;
+      var link = target.closest && target.closest(".sidebar a");
+      if (link) {
+        /* Give the router a moment to run first, then close */
+        setTimeout(closeMobileNav, 50);
+      }
+    }, true);
+    /* Nav-mod buttons (module toggles) shouldn't auto-close — they only expand */
+
+    /* Close drawer on hashchange (route change) as a safety net */
+    window.addEventListener("hashchange", function () { setTimeout(closeMobileNav, 30); });
+    /* Close on ESC */
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && document.body.classList.contains("nav-open")) closeMobileNav();
+    });
+
     window.addEventListener("hashchange", route);
     route();
 

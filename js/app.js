@@ -2748,30 +2748,87 @@
     $("#menuToggle").addEventListener("click", function () { document.body.classList.toggle("nav-open"); });
     $("#scrim").addEventListener("click", function () { document.body.classList.remove("nav-open"); });
 
-    /* Auto-close mobile drawer on link taps + route changes */
+    /* ============================================================
+       Mobile drawer control — bulletproof
+       ============================================================ */
+    function isMobile() { return window.innerWidth <= 980; }
     function closeMobileNav() {
-      if (window.innerWidth <= 980 && document.body.classList.contains("nav-open")) {
+      if (isMobile() && document.body.classList.contains("nav-open")) {
         document.body.classList.remove("nav-open");
       }
     }
-    /* Any anchor inside the sidebar closes the drawer */
+    function openMobileNav() {
+      if (isMobile() && !document.body.classList.contains("nav-open")) {
+        document.body.classList.add("nav-open");
+      }
+    }
+
+    /* 1. Any anchor inside the sidebar closes the drawer */
     document.addEventListener("click", function (e) {
       var target = e.target;
       if (!target) return;
       var link = target.closest && target.closest(".sidebar a");
       if (link) {
         /* Give the router a moment to run first, then close */
-        setTimeout(closeMobileNav, 50);
+        setTimeout(closeMobileNav, 60);
       }
     }, true);
-    /* Nav-mod buttons (module toggles) shouldn't auto-close — they only expand */
 
-    /* Close drawer on hashchange (route change) as a safety net */
+    /* 2. Detect click on the ::before pseudo close button
+          (pseudo-elements aren't real event targets, so we listen
+           on the sidebar and check click coordinates fall in the
+           top-right × zone) */
+    (function attachSidebarCloseX() {
+      var sidebar = document.querySelector(".sidebar");
+      if (!sidebar) return;
+      sidebar.addEventListener("click", function (e) {
+        if (!isMobile() || !document.body.classList.contains("nav-open")) return;
+        var rect = sidebar.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        /* × is ~34x34, positioned at top-right with 6-8px margin.
+           Zone: right edge to right-44, top 6 to 44. */
+        if (x >= rect.width - 46 && x <= rect.width - 4 && y >= 4 && y <= 46) {
+          closeMobileNav();
+          e.preventDefault(); e.stopPropagation();
+        }
+      });
+    })();
+
+    /* 3. Close drawer on hashchange */
     window.addEventListener("hashchange", function () { setTimeout(closeMobileNav, 30); });
-    /* Close on ESC */
+
+    /* 4. Close on ESC */
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && document.body.classList.contains("nav-open")) closeMobileNav();
     });
+
+    /* 5. Close on resize to desktop (drawer state doesn't make sense >980) */
+    window.addEventListener("resize", function () {
+      if (!isMobile()) document.body.classList.remove("nav-open");
+    }, { passive: true });
+
+    /* 6. Swipe-to-close: gesture on the sidebar itself */
+    (function swipeToClose() {
+      var sidebar = document.querySelector(".sidebar");
+      if (!sidebar) return;
+      var startX = 0, currentX = 0, tracking = false;
+      sidebar.addEventListener("touchstart", function (e) {
+        if (!isMobile() || !document.body.classList.contains("nav-open")) return;
+        startX = e.touches[0].clientX; currentX = startX; tracking = true;
+      }, { passive: true });
+      sidebar.addEventListener("touchmove", function (e) {
+        if (!tracking) return;
+        currentX = e.touches[0].clientX;
+      }, { passive: true });
+      sidebar.addEventListener("touchend", function () {
+        if (!tracking) return;
+        tracking = false;
+        var dx = currentX - startX;
+        /* Swipe left by more than 60px → close */
+        if (dx < -60) closeMobileNav();
+      });
+    })();
 
     window.addEventListener("hashchange", route);
     route();

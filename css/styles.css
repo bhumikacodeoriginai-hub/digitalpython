@@ -384,6 +384,32 @@ body::after {
 /* Fix hero overflow */
 .hero { overflow: hidden; }
 
+/* ---------- Voice Teaching Controls ---------- */
+.ai-voice-btn { background: linear-gradient(135deg, #f59e0b, #d97706) !important; }
+.voice-controls {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 18px; margin-bottom: 20px;
+  background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius);
+  animation: fadeUp .3s ease both;
+}
+.voice-status { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+.voice-indicator { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; animation: pulseDot 1s ease-in-out infinite; }
+.voice-text { font-size: 13.5px; color: var(--text-dim); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.voice-ctrl-btn {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: var(--font-sans); transition: background .15s;
+}
+.voice-ctrl-btn:hover { background: var(--bg-elev-2); }
+.voice-speed { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-dim); }
+.voice-speed input[type="range"] { width: 80px; height: 6px; cursor: pointer; accent-color: var(--accent); }
+
+@media (max-width: 640px) {
+  .voice-controls { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .voice-btns { width: 100%; }
+}
+
 @media (max-width: 640px) {
   .ai-controls { flex-direction: column; }
   .ai-select { min-width: 100%; }

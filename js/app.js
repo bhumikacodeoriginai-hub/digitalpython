@@ -543,7 +543,23 @@
     var explainBtn = el("button", "ai-btn", "🧠 Explain This Topic");
     explainBtn.id = "aiExplainBtn";
     controls.appendChild(explainBtn);
+
+    // Voice teach button
+    var voiceBtn = el("button", "ai-btn ai-voice-btn", "🔊 Voice Teach");
+    voiceBtn.id = "aiVoiceBtn";
+    controls.appendChild(voiceBtn);
+
     page.appendChild(controls);
+
+    // Voice controls (hidden until speaking)
+    var voiceControls = el("div", "voice-controls"); voiceControls.id = "voiceControls"; voiceControls.style.display = "none";
+    voiceControls.innerHTML = '<div class="voice-status"><span class="voice-indicator"></span><span class="voice-text" id="voiceStatusText">Teaching...</span></div>' +
+      '<div class="voice-btns">' +
+      '<button class="voice-ctrl-btn" id="voicePause">⏸ Pause</button>' +
+      '<button class="voice-ctrl-btn" id="voiceStop">⏹ Stop</button>' +
+      '<div class="voice-speed"><label>Speed:</label><input type="range" id="voiceSpeed" min="50" max="150" value="88" step="5"></div>' +
+      '</div>';
+    page.appendChild(voiceControls);
 
     // Result area
     var resultArea = el("div", "ai-result"); resultArea.id = "aiResult";
@@ -552,7 +568,7 @@
 
     content.appendChild(page);
 
-    // Event handler
+    // Event handler - Explain
     explainBtn.addEventListener("click", function () {
       var topicVal = topicSelect.value;
       var langCode = langSelect.value;
@@ -577,6 +593,60 @@
         resultArea.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 600);
     });
+
+    // Event handler - Voice Teach
+    voiceBtn.addEventListener("click", function () {
+      var topicVal = topicSelect.value;
+      var langCode = langSelect.value;
+      if (!topicVal) { resultArea.innerHTML = '<div class="ai-error">⚠️ Please select a topic first!</div>'; return; }
+      if (!window.DPVoice || !window.DPVoice.isSupported) {
+        resultArea.innerHTML = '<div class="ai-error">⚠️ Voice is not supported in this browser. Please use Chrome, Safari, or Edge.</div>';
+        return;
+      }
+
+      var parts = topicVal.split("|");
+      var modId = parseInt(parts[0]);
+      var conTitle = parts[1];
+      var mod = MODULE_BY_ID[modId];
+      if (!mod) return;
+
+      var concept = null;
+      (mod.concepts || []).forEach(function (c) { if (c.title === conTitle) concept = c; });
+      if (!concept) return;
+
+      // Start voice teaching
+      voiceControls.style.display = "flex";
+      document.querySelector("#voiceStatusText").textContent = "🎓 Teaching: " + concept.title + "...";
+      window.DPVoice.teach(concept, langCode);
+    });
+
+    // Voice control buttons
+    if (window.DPVoice) {
+      window.DPVoice.onEvent(function (event, data) {
+        var vc = document.querySelector("#voiceControls");
+        var st = document.querySelector("#voiceStatusText");
+        if (!vc || !st) return;
+        if (event === "start") { vc.style.display = "flex"; st.textContent = "🎓 Teaching..."; }
+        else if (event === "progress") { st.textContent = "🗣️ " + (data.text || "").slice(0, 60) + (data.text && data.text.length > 60 ? "..." : ""); }
+        else if (event === "end") { st.textContent = "✅ Explanation complete!"; setTimeout(function(){ vc.style.display = "none"; }, 3000); }
+        else if (event === "stop") { vc.style.display = "none"; }
+        else if (event === "pause") { st.textContent = "⏸ Paused"; }
+        else if (event === "resume") { st.textContent = "🗣️ Resuming..."; }
+      });
+    }
+
+    // Pause/Stop/Speed controls
+    setTimeout(function () {
+      var pauseBtn = document.querySelector("#voicePause");
+      var stopBtn = document.querySelector("#voiceStop");
+      var speedSlider = document.querySelector("#voiceSpeed");
+      if (pauseBtn) pauseBtn.addEventListener("click", function () {
+        if (window.DPVoice.isPaused()) { window.DPVoice.resume(); pauseBtn.textContent = "⏸ Pause"; }
+        else { window.DPVoice.pause(); pauseBtn.textContent = "▶ Resume"; }
+      });
+      if (stopBtn) stopBtn.addEventListener("click", function () { window.DPVoice.stop(); });
+      if (speedSlider) speedSlider.addEventListener("input", function () { window.DPVoice.setRate(parseInt(this.value) / 100); });
+    }, 100);
 
     highlightSidebar(null, null);
     document.title = "AI Python Teacher | " + T("heroTitle");

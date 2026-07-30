@@ -2748,48 +2748,60 @@
     /* ============================================================
        MOBILE DRAWER — DEFINITIVE IMPLEMENTATION
        Single source of truth: body.nav-open.
-       Close button is in HTML (index.html), not injected.
+       Defensive: re-queries DOM if elements not found initially.
        ============================================================ */
     (function drawerController() {
       var MOBILE_MAX = 980;
-      var body = document.body;
-      var sidebar = document.querySelector(".sidebar");
-      var scrim = document.querySelector(".scrim");
-      var menuBtn = document.querySelector("#menuToggle");
-      var closeBtn = document.querySelector("#sidebarClose");
       var scrollY = 0;
       var isOpen = false;
+
+      /* Late-bound getters — re-query if not cached, so if the HTML
+         markup arrived later (e.g. injected by another script) it still works. */
+      function getBody()     { return document.body; }
+      function getSidebar()  { return document.querySelector(".sidebar") || document.querySelector("aside.sidebar") || document.getElementById("sidebar"); }
+      function getScrim()    { return document.querySelector(".scrim") || document.getElementById("scrim"); }
+      function getMenuBtn()  { return document.querySelector("#menuToggle") || document.querySelector(".menu-toggle"); }
+      function getCloseBtn() { return document.querySelector("#sidebarClose") || document.querySelector(".sidebar-close-btn"); }
 
       function isMobile() { return window.innerWidth <= MOBILE_MAX; }
 
       function lockBody() {
+        var body = getBody();
         scrollY = window.scrollY || window.pageYOffset || 0;
         body.style.top = "-" + scrollY + "px";
         body.classList.add("nav-open");
-        if (menuBtn) menuBtn.setAttribute("aria-expanded", "true");
-        if (sidebar) sidebar.setAttribute("aria-hidden", "false");
-        if (scrim) scrim.setAttribute("aria-hidden", "false");
+        var mb = getMenuBtn(); if (mb) mb.setAttribute("aria-expanded", "true");
+        var sb = getSidebar(); if (sb) sb.setAttribute("aria-hidden", "false");
+        var sc = getScrim();   if (sc) sc.setAttribute("aria-hidden", "false");
       }
       function unlockBody() {
+        var body = getBody();
         body.classList.remove("nav-open");
         var y = parseInt(body.style.top || "0", 10) * -1;
         body.style.top = "";
         window.scrollTo(0, y || scrollY || 0);
-        if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
-        if (sidebar) sidebar.setAttribute("aria-hidden", isMobile() ? "true" : "false");
-        if (scrim) scrim.setAttribute("aria-hidden", "true");
+        var mb = getMenuBtn(); if (mb) mb.setAttribute("aria-expanded", "false");
+        var sb = getSidebar(); if (sb) sb.setAttribute("aria-hidden", isMobile() ? "true" : "false");
+        var sc = getScrim();   if (sc) sc.setAttribute("aria-hidden", "true");
       }
       function open() {
         if (!isMobile() || isOpen) return;
         isOpen = true; lockBody();
-        setTimeout(function () { if (closeBtn) closeBtn.focus(); }, 250);
+        setTimeout(function () { var cb = getCloseBtn(); if (cb) cb.focus(); }, 250);
       }
       function close() {
-        if (!isOpen && !body.classList.contains("nav-open")) return;
+        if (!isOpen && !getBody().classList.contains("nav-open")) return;
         isOpen = false; unlockBody();
-        if (menuBtn) menuBtn.focus();
+        var mb = getMenuBtn(); if (mb) mb.focus();
       }
       function toggle() { isOpen ? close() : open(); }
+
+      /* Cached references for attaching event listeners */
+      var sidebar = getSidebar();
+      var scrim = getScrim();
+      var menuBtn = getMenuBtn();
+      var closeBtn = getCloseBtn();
+      var body = getBody();
 
       /* Init state */
       unlockBody();

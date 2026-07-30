@@ -2849,9 +2849,14 @@
         if (e.key === "Escape" && body.classList.contains("nav-open")) close();
       });
 
-      /* --- 7. Resize: if we leave mobile viewport, force close & unlock --- */
+      /* --- 7. Resize: debounced. Only run when leaving mobile viewport. --- */
+      var resizeTimer = null;
       window.addEventListener("resize", function () {
-        if (!isMobile() && body.classList.contains("nav-open")) close();
+        if (resizeTimer) return;
+        resizeTimer = requestAnimationFrame(function () {
+          resizeTimer = null;
+          if (!isMobile() && body.classList.contains("nav-open")) close();
+        });
       }, { passive: true });
 
       /* --- 8. Swipe left inside drawer to close --- */

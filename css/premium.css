@@ -1,0 +1,645 @@
+/* ============================================================
+   DIGITAL PYTHON — PREMIUM PRODUCTION LAYER
+   Loaded AFTER styles.css so it wins specificity.
+   Goal: kill heavy visual effects, restore performance,
+         make the UI feel FAST + CLEAN + PROFESSIONAL.
+   Developed by Code Origin.AI Private Limited
+   ============================================================ */
+
+/* ============================================================
+   1. KILL EXPENSIVE EFFECTS GLOBALLY
+   ============================================================ */
+
+/* No backdrop blur anywhere. This was the #1 performance killer
+   on the mobile drawer backdrop and made the whole page look fuzzy. */
+*,
+*::before,
+*::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Kill decorative animations on body pseudo-elements. These were
+   running continuously behind every page = wasted GPU. */
+body::before,
+body::after {
+  animation: none !important;
+  display: none !important;
+}
+
+/* Kill continuous animations on brand & hero decorations. */
+.brand-logo { animation: none !important; }
+.hero { animation: none !important; background-size: 100% 100% !important; }
+.hero::after { animation: none !important; }
+.hero-badge { animation: none !important; }
+.hero-badge::after { animation: none !important; }
+.mod-card { animation: none !important; }
+.mod-card::after,
+.mod-card::before { animation: none !important; }
+.typing-text { animation: none !important; width: 100% !important; border-right: none !important; white-space: normal !important; }
+.hero-progress .bar { animation: none !important; }
+
+/* No costly transitions on every element */
+* { transition-property: color, background-color, border-color, opacity, transform !important; }
+
+/* ============================================================
+   2. UPGRADED DESIGN TOKENS
+   ============================================================ */
+
+:root {
+  /* Neutral surfaces */
+  --ds-bg:              #0a0f1c;
+  --ds-bg-2:            #0d1524;
+  --ds-surface:         #131b2e;
+  --ds-surface-hover:   #182236;
+  --ds-surface-active:  #1c2942;
+  --ds-border:          #1e2a44;
+  --ds-border-strong:   #2a3958;
+
+  /* Text */
+  --ds-text:            #e6ecf7;
+  --ds-text-dim:        #a8b5cf;
+  --ds-text-muted:      #6b7896;
+
+  /* Brand accents (used sparingly) */
+  --ds-indigo:          #6366f1;
+  --ds-indigo-soft:     rgba(99, 102, 241, 0.14);
+  --ds-violet:          #8b5cf6;
+  --ds-violet-soft:     rgba(139, 92, 246, 0.14);
+  --ds-blue:            #3b82f6;
+  --ds-blue-soft:       rgba(59, 130, 246, 0.14);
+  --ds-cyan:            #06b6d4;
+  --ds-cyan-soft:       rgba(6, 182, 212, 0.14);
+  --ds-green:           #22c55e;
+  --ds-green-soft:      rgba(34, 197, 94, 0.14);
+  --ds-amber:           #f59e0b;
+  --ds-amber-soft:      rgba(245, 158, 11, 0.14);
+  --ds-python-yellow:   #ffd43b;
+
+  /* Elevation (SUBTLE — no over-shadowing) */
+  --ds-shadow-sm:       0 1px 2px rgba(0, 0, 0, 0.15);
+  --ds-shadow-md:       0 2px 8px rgba(0, 0, 0, 0.25);
+  --ds-shadow-lg:       0 8px 24px rgba(0, 0, 0, 0.35);
+
+  /* Radius */
+  --ds-r-sm:            6px;
+  --ds-r-md:            10px;
+  --ds-r-lg:            14px;
+
+  /* Timing */
+  --ds-fast:            140ms;
+  --ds-normal:          200ms;
+  --ds-ease:            cubic-bezier(0.2, 0, 0.13, 1);
+
+  /* Z-index (canonical) */
+  --dp-z-content:       1;
+  --dp-z-sticky:        10;
+  --dp-z-header:        100;
+  --dp-z-backdrop:      500;
+  --dp-z-drawer:        600;
+  --dp-z-close:         610;
+  --dp-z-modal:         700;
+  --dp-z-toast:         800;
+}
+
+[data-theme="light"] {
+  --ds-bg:              #f7f8fb;
+  --ds-bg-2:            #ffffff;
+  --ds-surface:         #ffffff;
+  --ds-surface-hover:   #f2f5fa;
+  --ds-surface-active:  #eaeff7;
+  --ds-border:          #e4e8f0;
+  --ds-border-strong:   #d0d6e2;
+  --ds-text:            #10192e;
+  --ds-text-dim:        #4b5675;
+  --ds-text-muted:      #8390ae;
+  --ds-shadow-sm:       0 1px 2px rgba(20, 30, 60, 0.06);
+  --ds-shadow-md:       0 2px 8px rgba(20, 30, 60, 0.08);
+  --ds-shadow-lg:       0 8px 24px rgba(20, 30, 60, 0.10);
+}
+
+/* Apply base tokens to body */
+body {
+  background: var(--ds-bg) !important;
+  color: var(--ds-text) !important;
+}
+
+/* ============================================================
+   3. TOPBAR — CLEAN, NO BLUR
+   ============================================================ */
+.topbar {
+  background: var(--ds-bg-2) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid var(--ds-border) !important;
+  box-shadow: var(--ds-shadow-sm) !important;
+  z-index: var(--dp-z-header) !important;
+}
+[data-theme="light"] .topbar {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--ds-border) !important;
+}
+
+/* Hamburger button — clean button style */
+.menu-toggle {
+  background: transparent !important;
+  border: 1px solid var(--ds-border) !important;
+  border-radius: var(--ds-r-md) !important;
+  color: var(--ds-text) !important;
+}
+.menu-toggle:hover { background: var(--ds-surface-hover) !important; }
+.menu-toggle:active { background: var(--ds-surface-active) !important; }
+.menu-toggle span { background: currentColor !important; }
+
+/* Brand logo — clean gradient, no infinite animation */
+.brand-logo {
+  filter: none !important;
+  animation: none !important;
+  font-size: 22px !important;
+}
+
+/* ============================================================
+   4. SIDEBAR — CLEAN & FAST
+   ============================================================ */
+.sidebar {
+  background: var(--ds-bg-2) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-right: 1px solid var(--ds-border) !important;
+  box-shadow: none !important;
+}
+
+/* Sidebar shortcut buttons — DIFFERENTIATED, SUBTLE ACCENTS
+   (no more giant green gradients everywhere) */
+.ws-link {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+
+  margin: 4px 10px !important;
+  padding: 10px 12px !important;
+
+  border-radius: var(--ds-r-md) !important;
+  border: 1px solid var(--ds-border) !important;
+  background: var(--ds-surface) !important;
+  color: var(--ds-text) !important;
+
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+
+  box-shadow: none !important;
+  transition: background var(--ds-fast) var(--ds-ease),
+              border-color var(--ds-fast) var(--ds-ease),
+              transform var(--ds-fast) var(--ds-ease) !important;
+}
+.ws-link::before,
+.ws-link::after { display: none !important; content: none !important; }
+
+.ws-link:hover {
+  background: var(--ds-surface-hover) !important;
+  border-color: var(--ds-border-strong) !important;
+  transform: none !important;
+}
+.ws-link:active { background: var(--ds-surface-active) !important; }
+
+.ws-link .ws-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 15px !important;
+  flex-shrink: 0;
+}
+
+/* Differentiated accent color per shortcut */
+#wsLink   .ws-ico { background: var(--ds-green-soft);  color: var(--ds-green); }
+#aiLink   .ws-ico { background: var(--ds-violet-soft); color: var(--ds-violet); }
+#ivLink   .ws-ico { background: var(--ds-blue-soft);   color: var(--ds-blue); }
+#rfLink   .ws-ico { background: var(--ds-amber-soft);  color: var(--ds-amber); }
+#dashLink .ws-ico { background: var(--ds-cyan-soft);   color: var(--ds-cyan); }
+
+/* Sidebar section label */
+.sidebar-head {
+  padding: 18px 14px 8px !important;
+  border-top: 1px solid var(--ds-border) !important;
+  margin-top: 10px !important;
+}
+.sidebar-label {
+  color: var(--ds-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+.sidebar-count {
+  background: var(--ds-surface) !important;
+  border: 1px solid var(--ds-border) !important;
+  color: var(--ds-text-dim) !important;
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+}
+
+/* Module nav items — cleaner rows, no giant rounded cards */
+.nav-mod {
+  padding: 9px 12px !important;
+  margin: 1px 8px !important;
+  border-radius: var(--ds-r-sm) !important;
+  background: transparent !important;
+  border-left: 2px solid transparent !important;
+  color: var(--ds-text-dim) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  transition: background var(--ds-fast) var(--ds-ease),
+              color var(--ds-fast) var(--ds-ease),
+              border-color var(--ds-fast) var(--ds-ease) !important;
+}
+.nav-mod:hover {
+  background: var(--ds-surface-hover) !important;
+  color: var(--ds-text) !important;
+}
+.nav-mod.active {
+  background: var(--ds-indigo-soft) !important;
+  color: var(--ds-indigo) !important;
+  border-left-color: var(--ds-indigo) !important;
+  padding-left: 10px !important;
+}
+.nav-mod.active::before,
+.nav-mod.active::after { display: none !important; content: none !important; }
+
+.nav-mod .nav-num {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 6px !important;
+  background: var(--ds-surface) !important;
+  border: 1px solid var(--ds-border) !important;
+  color: var(--ds-text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  animation: none !important;
+  box-shadow: none !important;
+}
+.nav-mod.active .nav-num {
+  background: var(--ds-indigo) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.nav-concept {
+  padding: 6px 12px !important;
+  color: var(--ds-text-muted) !important;
+  font-size: 12.5px !important;
+  border-radius: var(--ds-r-sm) !important;
+}
+.nav-concept:hover {
+  background: var(--ds-surface-hover) !important;
+  color: var(--ds-text) !important;
+}
+.nav-concept.active {
+  color: var(--ds-indigo) !important;
+  background: var(--ds-indigo-soft) !important;
+  font-weight: 600 !important;
+}
+
+/* ============================================================
+   5. MOBILE DRAWER — CLEAN, NO BLUR, FAST
+   ============================================================ */
+@media (max-width: 980px) {
+
+  /* Sidebar off-canvas drawer */
+  .sidebar,
+  aside.sidebar {
+    position: fixed !important;
+    top: var(--topbar-h, 56px) !important;
+    left: 0 !important;
+    bottom: 0 !important;
+
+    width: min(88vw, 320px) !important;
+    max-width: 88vw !important;
+
+    /* SOLID, NO BLUR */
+    background: var(--ds-bg-2) !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+
+    border-right: 1px solid var(--ds-border) !important;
+
+    /* Modest shadow only for edge definition */
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3) !important;
+
+    /* Off-screen */
+    transform: translate3d(-100%, 0, 0) !important;
+    transition: transform 220ms var(--ds-ease) !important;
+
+    z-index: var(--dp-z-drawer) !important;
+
+    /* Scroll internally */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+
+    /* Safe area */
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
+  [data-theme="light"] .sidebar {
+    background: #ffffff !important;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  body.nav-open .sidebar {
+    transform: translate3d(0, 0, 0) !important;
+  }
+
+  /* Backdrop — SIMPLE dark overlay, NO BLUR */
+  .scrim {
+    position: fixed !important;
+    inset: var(--topbar-h, 56px) 0 0 0 !important;
+
+    /* NO BLUR — flat semi-transparent overlay */
+    background: rgba(0, 0, 0, 0.58) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+
+    z-index: var(--dp-z-backdrop) !important;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    /* Only opacity transitions */
+    transition: opacity 180ms var(--ds-ease),
+                visibility 0ms 180ms !important;
+
+    display: block !important;
+  }
+  body.nav-open .scrim {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transition: opacity 180ms var(--ds-ease),
+                visibility 0ms 0ms !important;
+  }
+
+  /* Close button — real HTML btn, clean */
+  .sidebar-close-btn {
+    display: flex !important;
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+
+    width: 36px;
+    height: 36px;
+    padding: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    background: var(--ds-surface) !important;
+    color: var(--ds-text) !important;
+    border: 1px solid var(--ds-border) !important;
+    border-radius: 50% !important;
+
+    cursor: pointer;
+    box-shadow: none !important;
+
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms var(--ds-ease),
+                background var(--ds-fast) var(--ds-ease) !important;
+
+    z-index: var(--dp-z-close) !important;
+
+    -webkit-tap-highlight-color: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 0;
+  }
+  .sidebar-close-btn:hover {
+    background: var(--ds-surface-hover) !important;
+    color: var(--ds-indigo) !important;
+  }
+  .sidebar-close-btn:active {
+    background: var(--ds-surface-active) !important;
+  }
+  body.nav-open .sidebar-close-btn {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .sidebar-inner {
+    padding: 52px 0 24px !important;
+  }
+
+  /* Body scroll lock (iOS-safe: position fixed) */
+  body.nav-open {
+    position: fixed !important;
+    width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Compact shortcut buttons on mobile */
+  .ws-link {
+    margin: 3px 10px !important;
+    padding: 9px 12px !important;
+    min-height: 44px;
+  }
+
+  /* Layout: content stays static, drawer overlays */
+  .layout { display: block !important; }
+  .content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px clamp(14px, 3vw, 24px) 80px !important;
+  }
+}
+
+/* Very narrow phones */
+@media (max-width: 480px) {
+  .sidebar { width: min(90vw, 300px) !important; }
+}
+@media (max-width: 360px) {
+  .sidebar { width: min(92vw, 280px) !important; }
+}
+
+/* ============================================================
+   6. HERO — CLEAN, RESTRAINED
+   ============================================================ */
+.hero {
+  background: linear-gradient(135deg, #4c1d95 0%, #4338ca 50%, #1e40af 100%) !important;
+  background-size: 100% 100% !important;
+  border-radius: 20px !important;
+  box-shadow: var(--ds-shadow-md) !important;
+  animation: none !important;
+}
+.hero::after { display: none !important; content: none !important; }
+.hero::before { display: none !important; content: none !important; }
+.hero-badge {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+}
+.hero-badge::after { display: none !important; content: none !important; }
+
+/* ============================================================
+   7. MODULE CARDS — CLEAN
+   ============================================================ */
+.mod-card {
+  background: var(--ds-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--ds-border) !important;
+  box-shadow: none !important;
+  transition: transform var(--ds-fast) var(--ds-ease),
+              border-color var(--ds-fast) var(--ds-ease) !important;
+}
+.mod-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--ds-indigo) !important;
+  box-shadow: var(--ds-shadow-md) !important;
+}
+.mod-card::before,
+.mod-card::after { display: none !important; content: none !important; }
+.mod-card:hover .mc-icon { transform: none !important; }
+.mod-card:hover .mc-num { box-shadow: none !important; }
+
+.mc-num {
+  background: var(--ds-indigo-soft) !important;
+  color: var(--ds-indigo) !important;
+}
+
+/* ============================================================
+   8. BUTTONS — UNIFIED, FAST
+   ============================================================ */
+.btn, .code-btn, .ws-btn, .iv-toggle-btn, .engine-btn, .role-btn,
+.review-btn, .rf-btn, .mock-nav-btn, .engine-nav-btn {
+  transition: background var(--ds-fast) var(--ds-ease),
+              border-color var(--ds-fast) var(--ds-ease),
+              color var(--ds-fast) var(--ds-ease) !important;
+  animation: none !important;
+}
+.btn:active, .code-btn:active, .ws-btn:active {
+  transform: scale(0.97) !important;
+}
+.btn-primary {
+  background: var(--ds-indigo) !important;
+  color: #fff !important;
+  border: 1px solid var(--ds-indigo) !important;
+  box-shadow: none !important;
+}
+.btn-primary:hover {
+  background: #4f46e5 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   9. CARDS (concept, iv-card, role, scenario, etc.)
+   ============================================================ */
+.concept, .iv-card, .role-card, .scenario-card, .sd-track,
+.tomorrow-step, .mock-config, .mock-history, .adaptive-info,
+.dash-readiness, .dash-topics, .dash-ws, .iv-plan-card,
+.iv-guide-card, .iv-round-card, .review-empty, .jd-wrap,
+.jd-role-card, .scenario-context-card, .scenario-prompt {
+  background: var(--ds-surface) !important;
+  border: 1px solid var(--ds-border) !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+.dash-stat {
+  background: var(--ds-surface) !important;
+  border: 1px solid var(--ds-border) !important;
+  box-shadow: none !important;
+}
+.dash-stat::before { display: none !important; content: none !important; }
+
+/* ============================================================
+   10. INTERVIEW TABS — CLEAN PILLS
+   ============================================================ */
+.iv-tabs {
+  gap: 6px !important;
+  padding: 4px 4px 12px !important;
+}
+.iv-tab {
+  background: var(--ds-surface) !important;
+  border: 1px solid var(--ds-border) !important;
+  color: var(--ds-text-dim) !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  transition: background var(--ds-fast) var(--ds-ease),
+              border-color var(--ds-fast) var(--ds-ease),
+              color var(--ds-fast) var(--ds-ease) !important;
+}
+.iv-tab:hover {
+  background: var(--ds-surface-hover) !important;
+  color: var(--ds-text) !important;
+}
+.iv-tab.active {
+  background: var(--ds-indigo) !important;
+  color: #fff !important;
+  border-color: var(--ds-indigo) !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   11. CODE BLOCKS — CLEAN
+   ============================================================ */
+.code-block { border-radius: var(--ds-r-md) !important; }
+.example { animation: none !important; }
+.example:hover {
+  border-color: var(--ds-indigo) !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   12. REDUCE MOTION SUPPORT
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ============================================================
+   13. FOCUS-VISIBLE (a11y) — clean ring, no glow
+   ============================================================ */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--ds-indigo) !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   14. SEARCH BAR — CLEAN
+   ============================================================ */
+.search-wrap input {
+  background: var(--ds-surface) !important;
+  border: 1px solid var(--ds-border) !important;
+  color: var(--ds-text) !important;
+  transition: border-color var(--ds-fast) var(--ds-ease) !important;
+}
+.search-wrap input:focus {
+  border-color: var(--ds-indigo) !important;
+  outline: none;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   15. UTILITIES
+   ============================================================ */
+.iv-tabs { overflow-x: auto; scrollbar-width: none; }
+.iv-tabs::-webkit-scrollbar { display: none; }
+
+/* End premium production layer */

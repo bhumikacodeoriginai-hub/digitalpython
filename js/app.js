@@ -781,7 +781,10 @@
     var items = [
       { id: "browse",  label: "🔍 Browse",       hash: "#/interview" },
       { id: "rapid",   label: "⚡ Rapid Fire",   hash: "#/interview/rapid-fire" },
+      { id: "output",  label: "🔮 Predict Output", hash: "#/interview/output" },
+      { id: "debug",   label: "🐞 Find the Bug", hash: "#/interview/debug" },
       { id: "mock",    label: "🎤 Mock Interview", hash: "#/interview/mock" },
+      { id: "adaptive",label: "🧠 Adaptive",     hash: "#/interview/adaptive" },
       { id: "rounds",  label: "🎯 By Round",     hash: "#/interview/rounds" },
       { id: "dash",    label: "📊 Dashboard",    hash: "#/interview/dashboard" },
       { id: "plans",   label: "📅 Study Plans",  hash: "#/interview/plans" }
@@ -1310,6 +1313,339 @@
   }
 
   /* ============================================================
+     PHASE 4 — Predict the Output & Find the Bug engines
+     ============================================================ */
+
+  /* --- Normalise strings for output comparison --- */
+  function normalizeOutput(s) {
+    return String(s || "").replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").replace(/[ \t]*\n/g, "\n").trim();
+  }
+  function similarity(a, b) {
+    a = normalizeOutput(a); b = normalizeOutput(b);
+    if (a === b) return 100;
+    if (!a || !b) return 0;
+    // Token overlap: simple Jaccard on lines
+    var aLines = a.split("\n"), bLines = b.split("\n");
+    var aSet = new Set(aLines), bSet = new Set(bLines);
+    var inter = 0; aSet.forEach(function (l) { if (bSet.has(l)) inter++; });
+    var uni = new Set([].concat(aLines).concat(bLines)).size;
+    if (!uni) return 0;
+    return Math.round((inter / uni) * 100);
+  }
+
+  var POState = { idx: 0, order: [], correct: 0, attempted: 0 };
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function renderPredictOutput() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data || !data.predictOutput) { content.innerHTML = '<div class="ai-error">Challenge data not loaded.</div>'; return; }
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🔮</span> Predict the Output</h1>' +
+      '<p class="iv-subtitle">Read the code, type what you think Python will print, then compare. This is the #1 way to spot tricky Python behaviour.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("output"));
+
+    if (!POState.order.length) { POState.order = shuffle(data.predictOutput.map(function (_, i) { return i; })); }
+    var ch = data.predictOutput[POState.order[POState.idx]];
+
+    var progressPct = Math.round((POState.attempted / data.predictOutput.length) * 100);
+    var stats = el("div", "engine-stats");
+    stats.innerHTML =
+      '<div class="engine-stat"><b>Q ' + (POState.idx + 1) + ' / ' + data.predictOutput.length + '</b></div>' +
+      '<div class="engine-stat"><span class="iv-diff diff-' + ch.difficulty.toLowerCase() + '">' + escapeHtml(ch.difficulty) + '</span></div>' +
+      '<div class="engine-stat">Topic: <b>' + escapeHtml(ch.topic) + '</b></div>' +
+      '<div class="engine-stat">Score: <b>' + POState.correct + '/' + POState.attempted + '</b> ' + (POState.attempted ? '(' + Math.round((POState.correct/POState.attempted)*100) + '%)' : '') + '</div>';
+    page.appendChild(stats);
+    page.appendChild(el("div", "engine-progress", '<div class="engine-progress-fill" style="width:' + progressPct + '%"></div>'));
+
+    // Code card
+    var codeCard = el("div", "engine-code-card");
+    codeCard.innerHTML = '<div class="engine-code-label">🐍 What does this print?</div>' +
+      '<pre class="engine-code-block"><code>' + highlight(ch.code) + '</code></pre>';
+    page.appendChild(codeCard);
+
+    // Answer input
+    var answerBlock = el("div", "engine-answer-block");
+    answerBlock.innerHTML = '<label class="engine-label">Your predicted output:</label>' +
+      '<textarea class="engine-input" id="poInput" rows="4" placeholder="Type exactly what you think will print, line by line..." spellcheck="false"></textarea>' +
+      '<div class="engine-buttons">' +
+      '<button class="engine-btn engine-check" id="poCheck">✅ Check my answer</button>' +
+      '<button class="engine-btn" id="poSkip">👁 Give up — reveal</button>' +
+      '</div>';
+    page.appendChild(answerBlock);
+
+    // Result area (populated on check/reveal)
+    var resultBlock = el("div", "engine-result"); resultBlock.style.display = "none";
+    page.appendChild(resultBlock);
+
+    // Nav
+    var nav = el("div", "engine-nav");
+    var prevBtn = el("button", "engine-nav-btn", "← Previous");
+    var nextBtn = el("button", "engine-nav-btn engine-next", "Next Question →");
+    var shuffleBtn = el("button", "engine-nav-btn", "🔀 Shuffle");
+    var resetBtn = el("button", "engine-nav-btn", "↻ Reset Score");
+    nav.appendChild(prevBtn); nav.appendChild(nextBtn); nav.appendChild(shuffleBtn); nav.appendChild(resetBtn);
+    page.appendChild(nav);
+
+    content.appendChild(page);
+
+    function showResult(userAnswer, revealedOnly) {
+      var expected = ch.output;
+      var norm = normalizeOutput(userAnswer);
+      var expNorm = normalizeOutput(expected);
+      var sim = similarity(userAnswer, expected);
+      var isCorrect = sim === 100;
+      resultBlock.style.display = "block";
+      resultBlock.classList.remove("engine-r-good", "engine-r-partial", "engine-r-wrong", "engine-r-reveal");
+      var head = "";
+      if (revealedOnly) {
+        resultBlock.classList.add("engine-r-reveal");
+        head = '<div class="engine-r-head">👁 Revealed answer</div>';
+      } else if (isCorrect) {
+        resultBlock.classList.add("engine-r-good");
+        head = '<div class="engine-r-head">🎉 Nailed it! 100% match</div>';
+      } else if (sim >= 60) {
+        resultBlock.classList.add("engine-r-partial");
+        head = '<div class="engine-r-head">🤏 Close! ' + sim + '% match — review the diff below</div>';
+      } else {
+        resultBlock.classList.add("engine-r-wrong");
+        head = '<div class="engine-r-head">❌ Not quite (' + sim + '% match) — check the expected output</div>';
+      }
+      var yourBlock = revealedOnly ? '' :
+        '<div class="engine-r-col"><div class="engine-r-sub">Your prediction</div><pre class="engine-r-pre">' + (userAnswer.trim() ? escapeHtml(userAnswer) : '<em>(empty)</em>') + '</pre></div>';
+      resultBlock.innerHTML = head +
+        '<div class="engine-r-grid">' +
+        yourBlock +
+        '<div class="engine-r-col"><div class="engine-r-sub">Expected output</div><pre class="engine-r-pre">' + escapeHtml(expected) + '</pre></div>' +
+        '</div>' +
+        '<div class="engine-r-expl"><b>💡 Why:</b> ' + escapeHtml(ch.explanation) + '</div>';
+      if (!revealedOnly) {
+        POState.attempted++;
+        if (isCorrect) POState.correct++;
+      }
+    }
+
+    document.getElementById("poCheck").addEventListener("click", function () {
+      var ans = document.getElementById("poInput").value;
+      showResult(ans, false);
+    });
+    document.getElementById("poSkip").addEventListener("click", function () { showResult("", true); });
+    prevBtn.addEventListener("click", function () { POState.idx = (POState.idx - 1 + POState.order.length) % POState.order.length; renderPredictOutput(); });
+    nextBtn.addEventListener("click", function () { POState.idx = (POState.idx + 1) % POState.order.length; renderPredictOutput(); });
+    shuffleBtn.addEventListener("click", function () { POState.order = shuffle(data.predictOutput.map(function (_, i) { return i; })); POState.idx = 0; renderPredictOutput(); });
+    resetBtn.addEventListener("click", function () { POState.correct = 0; POState.attempted = 0; renderPredictOutput(); });
+
+    highlightSidebar(null, null);
+    document.title = "Predict the Output | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  var BUGState = { idx: 0, order: [], correct: 0, attempted: 0, hintsShown: 0 };
+
+  function renderFindBug() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data || !data.findBug) { content.innerHTML = '<div class="ai-error">Debug data not loaded.</div>'; return; }
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🐞</span> Find the Bug</h1>' +
+      '<p class="iv-subtitle">Read the buggy code, describe what\'s wrong, then reveal the fix and full explanation.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("debug"));
+
+    if (!BUGState.order.length) { BUGState.order = shuffle(data.findBug.map(function (_, i) { return i; })); }
+    var ch = data.findBug[BUGState.order[BUGState.idx]];
+    BUGState.hintsShown = 0;
+
+    var progressPct = Math.round((BUGState.attempted / data.findBug.length) * 100);
+    var stats = el("div", "engine-stats");
+    stats.innerHTML =
+      '<div class="engine-stat"><b>Q ' + (BUGState.idx + 1) + ' / ' + data.findBug.length + '</b></div>' +
+      '<div class="engine-stat"><span class="iv-diff diff-' + ch.difficulty.toLowerCase() + '">' + escapeHtml(ch.difficulty) + '</span></div>' +
+      '<div class="engine-stat">Topic: <b>' + escapeHtml(ch.topic) + '</b></div>' +
+      '<div class="engine-stat">Score: <b>' + BUGState.correct + '/' + BUGState.attempted + '</b> ' + (BUGState.attempted ? '(' + Math.round((BUGState.correct/BUGState.attempted)*100) + '%)' : '') + '</div>';
+    page.appendChild(stats);
+    page.appendChild(el("div", "engine-progress", '<div class="engine-progress-fill" style="width:' + progressPct + '%"></div>'));
+
+    // Buggy code card
+    var codeCard = el("div", "engine-code-card engine-buggy");
+    codeCard.innerHTML = '<div class="engine-code-label">🐞 What\'s wrong with this code?</div>' +
+      '<pre class="engine-code-block"><code>' + highlight(ch.buggyCode) + '</code></pre>';
+    page.appendChild(codeCard);
+
+    // Your diagnosis
+    var diag = el("div", "engine-answer-block");
+    diag.innerHTML = '<label class="engine-label">Your diagnosis (describe the bug):</label>' +
+      '<textarea class="engine-input" id="bugInput" rows="3" placeholder="Type what you think is wrong..." spellcheck="false"></textarea>' +
+      '<div class="engine-buttons">' +
+      '<button class="engine-btn engine-check" id="bugCheck">✅ I\'m done — show me the answer</button>' +
+      '<button class="engine-btn" id="bugHint">💡 Hint</button>' +
+      '<button class="engine-btn" id="bugSkip">🏳️ Skip / Give up</button>' +
+      '</div>' +
+      '<div class="engine-hint" id="bugHintBox" style="display:none"></div>';
+    page.appendChild(diag);
+
+    var resultBlock = el("div", "engine-result"); resultBlock.style.display = "none";
+    page.appendChild(resultBlock);
+
+    // Nav
+    var nav = el("div", "engine-nav");
+    var prevBtn = el("button", "engine-nav-btn", "← Previous");
+    var nextBtn = el("button", "engine-nav-btn engine-next", "Next Bug →");
+    var shuffleBtn = el("button", "engine-nav-btn", "🔀 Shuffle");
+    var resetBtn = el("button", "engine-nav-btn", "↻ Reset Score");
+    nav.appendChild(prevBtn); nav.appendChild(nextBtn); nav.appendChild(shuffleBtn); nav.appendChild(resetBtn);
+    page.appendChild(nav);
+
+    content.appendChild(page);
+
+    function reveal(selfCorrect) {
+      BUGState.attempted++;
+      if (selfCorrect) BUGState.correct++;
+      resultBlock.style.display = "block";
+      resultBlock.classList.remove("engine-r-good", "engine-r-wrong", "engine-r-reveal");
+      resultBlock.classList.add(selfCorrect === true ? "engine-r-good" : (selfCorrect === false ? "engine-r-wrong" : "engine-r-reveal"));
+      resultBlock.innerHTML =
+        '<div class="engine-r-head">🐛 <b>The bug:</b> ' + escapeHtml(ch.bug) + '</div>' +
+        '<div class="engine-r-grid">' +
+          '<div class="engine-r-col"><div class="engine-r-sub">❌ Buggy code</div><pre class="engine-r-pre">' + highlight(ch.buggyCode) + '</pre></div>' +
+          '<div class="engine-r-col"><div class="engine-r-sub">✅ Fixed code</div><pre class="engine-r-pre">' + highlight(ch.fixedCode) + '</pre></div>' +
+        '</div>' +
+        '<div class="engine-r-expl"><b>💡 Explanation:</b> ' + escapeHtml(ch.explanation) + '</div>' +
+        '<div class="engine-selfmark">' +
+          '<div class="engine-sm-label">Did you correctly identify the bug?</div>' +
+          '<button class="engine-sm-btn engine-sm-good" id="bugMarkGood">✅ Yes I got it</button>' +
+          '<button class="engine-sm-btn engine-sm-bad" id="bugMarkBad">❌ No, I missed it</button>' +
+        '</div>';
+
+      document.getElementById("bugMarkGood").addEventListener("click", function () {
+        if (selfCorrect === true) return;
+        BUGState.correct++;
+        this.classList.add("done");
+        document.getElementById("bugMarkBad").classList.remove("done");
+      });
+      document.getElementById("bugMarkBad").addEventListener("click", function () {
+        if (selfCorrect === true) { BUGState.correct = Math.max(0, BUGState.correct - 1); }
+        this.classList.add("done");
+        document.getElementById("bugMarkGood").classList.remove("done");
+      });
+    }
+
+    document.getElementById("bugCheck").addEventListener("click", function () { reveal(null); });
+    document.getElementById("bugSkip").addEventListener("click", function () { reveal(false); });
+    document.getElementById("bugHint").addEventListener("click", function () {
+      var hintBox = document.getElementById("bugHintBox");
+      if (BUGState.hintsShown >= (ch.hints || []).length) return;
+      hintBox.style.display = "block";
+      hintBox.innerHTML += '<div class="engine-hint-item">💡 ' + escapeHtml(ch.hints[BUGState.hintsShown]) + '</div>';
+      BUGState.hintsShown++;
+    });
+
+    prevBtn.addEventListener("click", function () { BUGState.idx = (BUGState.idx - 1 + BUGState.order.length) % BUGState.order.length; renderFindBug(); });
+    nextBtn.addEventListener("click", function () { BUGState.idx = (BUGState.idx + 1) % BUGState.order.length; renderFindBug(); });
+    shuffleBtn.addEventListener("click", function () { BUGState.order = shuffle(data.findBug.map(function (_, i) { return i; })); BUGState.idx = 0; renderFindBug(); });
+    resetBtn.addEventListener("click", function () { BUGState.correct = 0; BUGState.attempted = 0; renderFindBug(); });
+
+    highlightSidebar(null, null);
+    document.title = "Find the Bug | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
+     PHASE 6 — Adaptive Practice
+     Uses DPProgress metrics to pick weak-topic questions.
+     ============================================================ */
+  function renderAdaptive() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🧠</span> Adaptive Practice</h1>' +
+      '<p class="iv-subtitle">The system watches which topics you struggle with, then serves questions to close those gaps. Practice a little every day — it will re-target automatically.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("adaptive"));
+
+    var metrics = window.DPProgress.computeMetrics(data.questions);
+    var attempted = metrics.correct + metrics.incorrect;
+
+    // Explanation card
+    var infoCard = el("div", "adaptive-info");
+    if (attempted === 0) {
+      infoCard.innerHTML = '<h3>🌱 New here?</h3>' +
+        '<p>You haven\'t self-marked any questions yet. Do a few in the <a href="#/interview">Browse</a> tab or a <a href="#/interview/mock">Mock Interview</a> first, then come back. Adaptive practice needs your history to target your weak spots.</p>' +
+        '<p>Meanwhile, here\'s a balanced beginner set to start with:</p>';
+    } else {
+      var weakList = metrics.weak.length ?
+        metrics.weak.map(function (w) { return '<span class="adaptive-weak-tag">' + escapeHtml(w.topic) + ' (' + Math.round(w.accuracy * 100) + '%)</span>'; }).join(" ")
+        : '<em>None yet — keep practising and we\'ll spot patterns.</em>';
+      var strongList = metrics.strong.length ?
+        metrics.strong.map(function (s) { return '<span class="adaptive-strong-tag">' + escapeHtml(s.topic) + ' (' + Math.round(s.accuracy * 100) + '%)</span>'; }).join(" ")
+        : '<em>None yet — attempt more questions in each topic.</em>';
+      infoCard.innerHTML = '<h3>🎯 Personalised for you</h3>' +
+        '<div class="adaptive-row"><b>Weak topics (focus here):</b><br>' + weakList + '</div>' +
+        '<div class="adaptive-row"><b>Strong topics (harder challenges):</b><br>' + strongList + '</div>' +
+        '<div class="adaptive-row"><b>Overall accuracy:</b> <b>' + metrics.accuracy + '%</b> across ' + attempted + ' attempts · <b>Coverage:</b> ' + metrics.coverage + '%</div>';
+    }
+    page.appendChild(infoCard);
+
+    // Actions
+    var actions = el("div", "adaptive-actions");
+    [
+      { count: 5,  label: "🎯 Quick 5-question drill" },
+      { count: 10, label: "🧠 10-question adaptive session" },
+      { count: 20, label: "🔥 20-question focused set" }
+    ].forEach(function (opt) {
+      var btn = el("button", "adaptive-btn", opt.label);
+      btn.addEventListener("click", function () {
+        var picks = data.pickAdaptive(opt.count);
+        if (!picks.length) { alert("Not enough data yet."); return; }
+        // Kick off a mock session using the adaptive picks
+        MOCK_STATE = {
+          config: { adaptive: true, count: opt.count },
+          questions: picks,
+          idx: 0,
+          answers: picks.map(function () { return { selfMark: null, timeSec: 0, revealed: false }; }),
+          startedAt: Date.now(),
+          qStart: Date.now()
+        };
+        location.hash = "#/interview/mock/session";
+      });
+      actions.appendChild(btn);
+    });
+    page.appendChild(actions);
+
+    // Preview of what would come next
+    var preview = data.pickAdaptive(5);
+    if (preview.length) {
+      var previewWrap = el("div", "adaptive-preview");
+      previewWrap.innerHTML = '<h3 class="dash-h2">👀 Preview: your next 5 adaptive questions</h3>';
+      preview.forEach(function (p, i) {
+        var q = p.q;
+        previewWrap.innerHTML += '<div class="adaptive-preview-row">' +
+          '<span class="adaptive-preview-num">Q' + (i+1) + '</span>' +
+          '<span class="adaptive-preview-topic">' + escapeHtml(q.level || "General") + '</span>' +
+          '<span class="adaptive-preview-diff"><span class="iv-diff diff-' + (q.difficulty || "beginner").toLowerCase() + '">' + escapeHtml(q.difficulty || "Beginner") + '</span></span>' +
+          '<span class="adaptive-preview-q">' + escapeHtml(q.q) + '</span>' +
+          '</div>';
+      });
+      page.appendChild(previewWrap);
+    }
+
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "Adaptive Practice | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
      MOCK INTERVIEW FLOW  (Phase 5)
      Config screen -> Session screen -> Result screen
      State stored in-memory + last result in localStorage
@@ -1767,6 +2103,9 @@
     else if (/^#\/interview\/mock\/session/.test(hash)) { renderMockSession(); }
     else if (/^#\/interview\/mock\/result/.test(hash))  { renderMockResult(); }
     else if (/^#\/interview\/mock/.test(hash))          { renderMockConfig(); }
+    else if (/^#\/interview\/output/.test(hash))        { renderPredictOutput(); }
+    else if (/^#\/interview\/debug/.test(hash))         { renderFindBug(); }
+    else if (/^#\/interview\/adaptive/.test(hash))      { renderAdaptive(); }
     else if (/^#\/interview/.test(hash)) { renderInterview(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);

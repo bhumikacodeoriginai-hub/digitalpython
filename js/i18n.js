@@ -32,7 +32,8 @@
       runHint: "Runs in your browser via Pyodide (WebAssembly)", offlineNote: "Live run needs internet the first time — showing the expected output below.",
       footer: "developed by Code Origin.AI Private Limited.", footerTag: "A complete learning companion for aspiring and professional Python developers.",
       themeTitle: "Toggle light / dark", langLabel: "Language", getStarted: "Start Learning", openWorkspaceCta: "Open Workspace",
-      runAll: "Run this example", editRun: "Edit & Run"
+      runAll: "Run this example", editRun: "Edit & Run",
+      explanation: "How it works (Step by Step)"
     },
     hi: {
       brandSub: "Code Origin.AI द्वारा", searchPlaceholder: "अवधारणाएँ, उदाहरण, कीवर्ड खोजें…",
@@ -50,7 +51,8 @@
       runHint: "Pyodide (WebAssembly) के ज़रिए आपके ब्राउज़र में चलता है", offlineNote: "पहली बार लाइव रन के लिए इंटरनेट चाहिए — नीचे अपेक्षित आउटपुट दिखाया गया है।",
       footer: "Code Origin.AI Private Limited द्वारा विकसित।", footerTag: "इच्छुक और पेशेवर पायथन डेवलपर्स के लिए एक संपूर्ण सीखने का साथी।",
       themeTitle: "लाइट / डार्क बदलें", langLabel: "भाषा", getStarted: "सीखना शुरू करें", openWorkspaceCta: "वर्कस्पेस खोलें",
-      runAll: "यह उदाहरण चलाएँ", editRun: "संपादित करें और चलाएँ"
+      runAll: "यह उदाहरण चलाएँ", editRun: "संपादित करें और चलाएँ",
+      explanation: "यह कैसे काम करता है (चरण दर चरण)"
     },
     kn: {
       brandSub: "Code Origin.AI ಇಂದ", searchPlaceholder: "ಪರಿಕಲ್ಪನೆಗಳು, ಉದಾಹರಣೆಗಳು, ಕೀವರ್ಡ್‌ಗಳನ್ನು ಹುಡುಕಿ…",
@@ -68,7 +70,8 @@
       runHint: "Pyodide (WebAssembly) ಮೂಲಕ ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಚಲಿಸುತ್ತದೆ", offlineNote: "ಮೊದಲ ಬಾರಿ ಲೈವ್ ರನ್‌ಗೆ ಇಂಟರ್ನೆಟ್ ಬೇಕು — ಕೆಳಗೆ ನಿರೀಕ್ಷಿತ ಔಟ್‌ಪುಟ್ ತೋರಿಸಲಾಗಿದೆ.",
       footer: "Code Origin.AI Private Limited ಇಂದ ಅಭಿವೃದ್ಧಿಪಡಿಸಲಾಗಿದೆ.", footerTag: "ಆಕಾಂಕ್ಷಿ ಮತ್ತು ವೃತ್ತಿಪರ ಪೈಥಾನ್ ಡೆವಲಪರ್‌ಗಳಿಗೆ ಸಂಪೂರ್ಣ ಕಲಿಕಾ ಸಂಗಾತಿ.",
       themeTitle: "ಲೈಟ್ / ಡಾರ್ಕ್ ಬದಲಾಯಿಸಿ", langLabel: "ಭಾಷೆ", getStarted: "ಕಲಿಕೆ ಪ್ರಾರಂಭಿಸಿ", openWorkspaceCta: "ವರ್ಕ್‌ಸ್ಪೇಸ್ ತೆರೆಯಿರಿ",
-      runAll: "ಈ ಉದಾಹರಣೆ ಚಲಾಯಿಸಿ", editRun: "ಸಂಪಾದಿಸಿ ಮತ್ತು ಚಲಾಯಿಸಿ"
+      runAll: "ಈ ಉದಾಹರಣೆ ಚಲಾಯಿಸಿ", editRun: "ಸಂಪಾದಿಸಿ ಮತ್ತು ಚಲಾಯಿಸಿ",
+      explanation: "ಇದು ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ (ಹಂತ ಹಂತವಾಗಿ)"
     },
     te: {
       brandSub: "Code Origin.AI ద్వారా", searchPlaceholder: "భావనలు, ఉదాహరణలు, కీవర్డ్‌లను వెతకండి…",
@@ -86,7 +89,8 @@
       runHint: "Pyodide (WebAssembly) ద్వారా మీ బ్రౌజర్‌లో అమలవుతుంది", offlineNote: "మొదటిసారి లైవ్ రన్‌కు ఇంటర్నెట్ అవసరం — క్రింద ఆశించిన అవుట్‌పుట్ చూపబడింది.",
       footer: "Code Origin.AI Private Limited ద్వారా అభివృద్ధి చేయబడింది.", footerTag: "ఔత్సాహిక మరియు వృత్తిపరమైన పైథాన్ డెవలపర్‌లకు సంపూర్ణ అభ్యాస సహచరుడు.",
       themeTitle: "లైట్ / డార్క్ మార్చండి", langLabel: "భాష", getStarted: "నేర్చుకోవడం ప్రారంభించండి", openWorkspaceCta: "వర్క్‌స్పేస్ తెరవండి",
-      runAll: "ఈ ఉదాహరణను అమలు చేయండి", editRun: "సవరించి అమలు చేయండి"
+      runAll: "ఈ ఉదాహరణను అమలు చేయండి", editRun: "సవరించి అమలు చేయండి",
+      explanation: "ఇది ఎలా పనిచేస్తుంది (దశల వారీగా)"
     },
     ta: {
       brandSub: "Code Origin.AI மூலம்", searchPlaceholder: "கருத்துகள், எடுத்துக்காட்டுகள், முக்கிய சொற்களைத் தேடுங்கள்…",
@@ -104,7 +108,8 @@
       runHint: "Pyodide (WebAssembly) மூலம் உங்கள் உலாவியில் இயங்குகிறது", offlineNote: "முதல் முறை நேரடி இயக்கத்திற்கு இணையம் தேவை — கீழே எதிர்பார்க்கப்படும் வெளியீடு காட்டப்படுகிறது.",
       footer: "Code Origin.AI Private Limited மூலம் உருவாக்கப்பட்டது.", footerTag: "ஆர்வமுள்ள மற்றும் தொழில்முறை பைதான் டெவலப்பர்களுக்கான முழுமையான கற்றல் துணை.",
       themeTitle: "லைட் / டார்க் மாற்று", langLabel: "மொழி", getStarted: "கற்க தொடங்குங்கள்", openWorkspaceCta: "பணியிடத்தைத் திற",
-      runAll: "இந்த எடுத்துக்காட்டை இயக்கு", editRun: "திருத்தி இயக்கு"
+      runAll: "இந்த எடுத்துக்காட்டை இயக்கு", editRun: "திருத்தி இயக்கு",
+      explanation: "இது எப்படி வேலை செய்கிறது (படிப்படியாக)"
     },
     ml: {
       brandSub: "Code Origin.AI വഴി", searchPlaceholder: "ആശയങ്ങൾ, ഉദാഹരണങ്ങൾ, കീവേഡുകൾ തിരയുക…",
@@ -122,7 +127,8 @@
       runHint: "Pyodide (WebAssembly) വഴി നിങ്ങളുടെ ബ്രൗസറിൽ പ്രവർത്തിക്കുന്നു", offlineNote: "ആദ്യ തവണ തത്സമയ റണ്ണിന് ഇന്റർനെറ്റ് ആവശ്യമാണ് — താഴെ പ്രതീക്ഷിത ഔട്ട്‌പുട്ട് കാണിക്കുന്നു.",
       footer: "Code Origin.AI Private Limited വികസിപ്പിച്ചത്.", footerTag: "ആഗ്രഹികളും പ്രൊഫഷണലുകളുമായ പൈത്തൺ ഡെവലപ്പർമാർക്കുള്ള സമ്പൂർണ്ണ പഠന സഹായി.",
       themeTitle: "ലൈറ്റ് / ഡാർക്ക് മാറ്റുക", langLabel: "ഭാഷ", getStarted: "പഠനം ആരംഭിക്കുക", openWorkspaceCta: "വർക്ക്‌സ്‌പേസ് തുറക്കുക",
-      runAll: "ഈ ഉദാഹരണം പ്രവർത്തിപ്പിക്കുക", editRun: "എഡിറ്റ് ചെയ്ത് പ്രവർത്തിപ്പിക്കുക"
+      runAll: "ഈ ഉദാഹരണം പ്രവർത്തിപ്പിക്കുക", editRun: "എഡിറ്റ് ചെയ്ത് പ്രവർത്തിപ്പിക്കുക",
+      explanation: "ഇത് എങ്ങനെ പ്രവർത്തിക്കുന്നു (ഘട്ടം ഘട്ടമായി)"
     }
   };
 

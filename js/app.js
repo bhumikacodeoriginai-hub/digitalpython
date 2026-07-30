@@ -228,6 +228,24 @@
     } else { out.style.display = "none"; }
     wrap.appendChild(out);
 
+    // Explanation block — step-by-step for non-programmers
+    if (ex.explanation) {
+      var explWrap = el("div", "explanation");
+      var explToggle = el("button", "expl-toggle", "💡 " + T("explanation"));
+      var explBody = el("div", "expl-body");
+      explBody.innerHTML = renderNotes(ex.explanation);
+      explBody.style.display = "none";
+      explToggle.addEventListener("click", function () {
+        var show = explBody.style.display === "none";
+        explBody.style.display = show ? "block" : "none";
+        explToggle.classList.toggle("open", show);
+        explToggle.innerHTML = (show ? "🔽 " : "💡 ") + T("explanation");
+      });
+      explWrap.appendChild(explToggle);
+      explWrap.appendChild(explBody);
+      wrap.appendChild(explWrap);
+    }
+
     editBtn.addEventListener("click", function () {
       if (editor.style.display === "none") {
         editor.style.display = "block"; pre.style.display = "none";

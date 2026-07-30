@@ -804,6 +804,38 @@ window.DP.registerModule({
         { title: "Start threads", code: `import threading\n\ndef task(n):\n    print(f"task {n}")\n\nthreads = [threading.Thread(target=task, args=(i,)) for i in range(3)]\nfor t in threads: t.start()\nfor t in threads: t.join()`, output: `task 0\ntask 1\ntask 2` },
         { title: "Lock for shared counter", code: `import threading\ncounter = 0\nlock = threading.Lock()\n\ndef inc():\n    global counter\n    for _ in range(1000):\n        with lock:\n            counter += 1\n\nts = [threading.Thread(target=inc) for _ in range(2)]\nfor t in ts: t.start()\nfor t in ts: t.join()\nprint(counter)`, output: `2000` }
       ]
+    },
+    {
+      title: "Multithreading — Practical",
+      badge: "Threading · 25+ examples",
+      notes: ["Real-world threading patterns for I/O-bound work. Remember: GIL prevents true CPU parallelism."],
+      examples: [
+        { title: "Simple thread with args", code: `import threading\ndef greet(name):\n    print(f"Hi {name}")\nt = threading.Thread(target=greet, args=("Sara",))\nt.start(); t.join()`, output: `Hi Sara` },
+        { title: "Multiple threads run concurrently", code: `import threading, time\ndef task(n):\n    time.sleep(0.01)\n    print(f"task {n} done")\n\nts = [threading.Thread(target=task, args=(i,)) for i in range(3)]\nfor t in ts: t.start()\nfor t in ts: t.join()`, output: `task 0 done\ntask 1 done\ntask 2 done` },
+        { title: "Thread subclass", code: `import threading\nclass Worker(threading.Thread):\n    def __init__(self, n): super().__init__(); self.n = n\n    def run(self): print(f"worker {self.n}")\n\nw = Worker(1); w.start(); w.join()`, output: `worker 1` },
+        { title: "Thread name and identity", code: `import threading\ndef show():\n    t = threading.current_thread()\n    print(t.name, t.ident is not None)\n\nthreading.Thread(target=show, name="MyThread").start()`, output: `MyThread True` },
+        { title: "Daemon thread (dies with main)", code: `import threading, time\ndef bg():\n    while True:\n        time.sleep(0.1)\n\nt = threading.Thread(target=bg, daemon=True)\nt.start()\nprint("main done — daemon killed")`, output: `main done — daemon killed` },
+        { title: "RLock (reentrant)", code: `import threading\nlock = threading.RLock()\ndef outer():\n    with lock:\n        inner()\ndef inner():\n    with lock:  # OK — same thread\n        print("nested lock OK")\nouter()`, output: `nested lock OK` },
+        { title: "Semaphore (max N at once)", code: `import threading\nsem = threading.Semaphore(2)\ndef task(n):\n    with sem:\n        print(f"in {n}")\n\nfor i in range(3):\n    threading.Thread(target=task, args=(i,)).start()`, output: `in 0\nin 1\nin 2` },
+        { title: "Event flag for signaling", code: `import threading\nready = threading.Event()\ndef waiter():\n    ready.wait()\n    print("got signal")\n\nt = threading.Thread(target=waiter)\nt.start()\nready.set(); t.join()`, output: `got signal` },
+        { title: "Condition variable", code: `import threading\ncv = threading.Condition()\ndata = []\ndef producer():\n    with cv:\n        data.append(42); cv.notify()\ndef consumer():\n    with cv:\n        while not data: cv.wait()\n        print(data.pop())\n\nc = threading.Thread(target=consumer); c.start()\nproducer(); c.join()`, output: `42` },
+        { title: "Queue for producer-consumer", code: `import threading, queue\nq = queue.Queue()\ndef producer():\n    for i in range(3): q.put(i)\n    q.put(None)  # sentinel\ndef consumer():\n    while (item := q.get()) is not None:\n        print(item)\n\nthreading.Thread(target=producer).start()\nconsumer()`, output: `0\n1\n2` },
+        { title: "ThreadPoolExecutor.map", code: `from concurrent.futures import ThreadPoolExecutor\ndef square(n): return n * n\nwith ThreadPoolExecutor(4) as pool:\n    print(list(pool.map(square, [1,2,3,4,5])))`, output: `[1, 4, 9, 16, 25]` },
+        { title: "ThreadPoolExecutor.submit + Future", code: `from concurrent.futures import ThreadPoolExecutor\ndef work(n): return n * 10\nwith ThreadPoolExecutor(2) as pool:\n    future = pool.submit(work, 5)\n    print(future.result())`, output: `50` },
+        { title: "as_completed for streaming results", code: `from concurrent.futures import ThreadPoolExecutor, as_completed\nimport time\ndef slow(n): time.sleep(0.01 * (5-n)); return n\nwith ThreadPoolExecutor(4) as pool:\n    fs = [pool.submit(slow, i) for i in range(4)]\n    for f in as_completed(fs):\n        print(f.result(), end=" ")`, output: `3 2 1 0 ` },
+        { title: "Timeout on Future.result", code: `from concurrent.futures import ThreadPoolExecutor, TimeoutError\nimport time\ndef slow(): time.sleep(1); return "done"\nwith ThreadPoolExecutor() as pool:\n    f = pool.submit(slow)\n    try:\n        print(f.result(timeout=0.05))\n    except TimeoutError:\n        print("timed out")`, output: `timed out` },
+        { title: "Thread-local storage", code: `import threading\ndata = threading.local()\ndef worker(name):\n    data.name = name\n    print(f"thread has: {data.name}")\n\nfor n in ["A", "B"]:\n    threading.Thread(target=worker, args=(n,)).start()`, output: `thread has: A\nthread has: B` },
+        { title: "Race condition demo (buggy)", code: `import threading\nx = 0\ndef inc():\n    global x\n    for _ in range(10000): x += 1\n\nts = [threading.Thread(target=inc) for _ in range(4)]\nfor t in ts: t.start()\nfor t in ts: t.join()\nprint("<= 40000")`, output: `<= 40000` },
+        { title: "Barrier for synchronized start", code: `import threading, time\nb = threading.Barrier(3)\ndef racer(n):\n    b.wait()  # all wait until 3 arrive\n    print(f"go {n}")\n\nfor i in range(3):\n    threading.Thread(target=racer, args=(i,)).start()`, output: `go 0\ngo 1\ngo 2` },
+        { title: "Timer thread (runs after delay)", code: `import threading\ndef hello():\n    print("delayed hello")\n\nt = threading.Timer(0.05, hello)\nt.start(); t.join()`, output: `delayed hello` },
+        { title: "Active thread count", code: `import threading, time\ndef task(): time.sleep(0.05)\nfor _ in range(3):\n    threading.Thread(target=task).start()\ntime.sleep(0.01)\nprint(threading.active_count() >= 1)`, output: `True` },
+        { title: "join with timeout", code: `import threading, time\ndef slow(): time.sleep(1)\nt = threading.Thread(target=slow)\nt.start()\nt.join(timeout=0.05)\nprint("still alive?", t.is_alive())`, output: `still alive? True` },
+        { title: "Fetch URLs concurrently (pattern)", code: `from concurrent.futures import ThreadPoolExecutor\nurls = ["url1", "url2", "url3"]\ndef fetch(u): return f"data_{u}"\nwith ThreadPoolExecutor(5) as pool:\n    results = list(pool.map(fetch, urls))\nprint(results)`, output: `['data_url1', 'data_url2', 'data_url3']` },
+        { title: "Bounded semaphore (over-release protection)", code: `import threading\nsem = threading.BoundedSemaphore(2)\nsem.acquire(); sem.acquire()\nsem.release(); sem.release()\ntry:\n    sem.release()  # over-release\nexcept ValueError as e:\n    print(str(e)[:30])`, output: `Semaphore released too many ti` },
+        { title: "with-lock ensures release on error", code: `import threading\nlock = threading.Lock()\ntry:\n    with lock:\n        raise ValueError("oops")\nexcept ValueError:\n    pass\nprint("lock free?", not lock.locked())`, output: `lock free? True` },
+        { title: "Parallel sum with threads", code: `from concurrent.futures import ThreadPoolExecutor\ndef part_sum(chunk): return sum(chunk)\ndata = list(range(1000))\nchunks = [data[i:i+250] for i in range(0, 1000, 250)]\nwith ThreadPoolExecutor(4) as p:\n    total = sum(p.map(part_sum, chunks))\nprint(total)`, output: `499500` },
+        { title: "Stop event to shut down worker", code: `import threading, time\nstop = threading.Event()\ndef worker():\n    while not stop.is_set():\n        time.sleep(0.01)\n    print("stopping")\n\nt = threading.Thread(target=worker); t.start()\nstop.set(); t.join()`, output: `stopping` }
+      ]
     }
   ]
 });
@@ -822,6 +854,34 @@ window.DP.registerModule({
       examples: [
         { title: "Pool.map", code: `from multiprocessing import Pool\n\ndef square(x):\n    return x * x\n\nif __name__ == "__main__":\n    with Pool(4) as p:\n        print(p.map(square, [1, 2, 3, 4]))`, output: `[1, 4, 9, 16]` },
         { title: "A single Process", code: `from multiprocessing import Process\n\ndef work():\n    print("in child process")\n\nif __name__ == "__main__":\n    p = Process(target=work)\n    p.start()\n    p.join()`, output: `in child process` }
+      ]
+    },
+    {
+      title: "Multiprocessing — Practical",
+      badge: "Multiprocessing · 20+ examples",
+      notes: ["Use multiprocessing for CPU-bound work — it bypasses the GIL by using separate processes."],
+      examples: [
+        { title: "Process with arguments", code: `from multiprocessing import Process\ndef worker(name):\n    print(f"hello {name}")\nif __name__ == "__main__":\n    p = Process(target=worker, args=("Sara",))\n    p.start(); p.join()`, output: `hello Sara` },
+        { title: "Multiple processes in parallel", code: `from multiprocessing import Process\ndef task(n): print(f"task {n}")\nif __name__ == "__main__":\n    procs = [Process(target=task, args=(i,)) for i in range(3)]\n    for p in procs: p.start()\n    for p in procs: p.join()`, output: `task 0\ntask 1\ntask 2` },
+        { title: "Get process PID", code: `import os\nfrom multiprocessing import Process\ndef show(): print("PID:", os.getpid())\nif __name__ == "__main__":\n    p = Process(target=show); p.start(); p.join()`, output: `PID: 12345` },
+        { title: "Pool.map for CPU-heavy work", code: `from multiprocessing import Pool\ndef square(n): return n * n\nif __name__ == "__main__":\n    with Pool(4) as p:\n        print(p.map(square, [1,2,3,4,5]))`, output: `[1, 4, 9, 16, 25]` },
+        { title: "Pool.starmap for multi-arg", code: `from multiprocessing import Pool\ndef add(a, b): return a + b\nif __name__ == "__main__":\n    with Pool(2) as p:\n        print(p.starmap(add, [(1,2),(3,4),(5,6)]))`, output: `[3, 7, 11]` },
+        { title: "Pool.imap for streaming results", code: `from multiprocessing import Pool\ndef work(n): return n * 2\nif __name__ == "__main__":\n    with Pool(2) as p:\n        for r in p.imap(work, range(4)):\n            print(r, end=" ")`, output: `0 2 4 6 ` },
+        { title: "Pool.apply_async", code: `from multiprocessing import Pool\ndef sq(n): return n*n\nif __name__ == "__main__":\n    with Pool(2) as p:\n        r = p.apply_async(sq, (5,))\n        print(r.get())`, output: `25` },
+        { title: "Queue between processes", code: `from multiprocessing import Process, Queue\ndef producer(q):\n    for i in range(3): q.put(i)\n    q.put(None)\ndef consumer(q):\n    while (x := q.get()) is not None:\n        print(x, end=" ")\nif __name__ == "__main__":\n    q = Queue()\n    Process(target=producer, args=(q,)).start()\n    Process(target=consumer, args=(q,)).start()`, output: `0 1 2 ` },
+        { title: "Pipe for two-way", code: `from multiprocessing import Process, Pipe\ndef child(conn):\n    conn.send("hi from child")\n    conn.close()\nif __name__ == "__main__":\n    parent, child_c = Pipe()\n    p = Process(target=child, args=(child_c,))\n    p.start(); print(parent.recv()); p.join()`, output: `hi from child` },
+        { title: "Shared Value across processes", code: `from multiprocessing import Process, Value\ndef inc(counter):\n    with counter.get_lock():\n        counter.value += 1\nif __name__ == "__main__":\n    c = Value("i", 0)\n    ps = [Process(target=inc, args=(c,)) for _ in range(5)]\n    for p in ps: p.start()\n    for p in ps: p.join()\n    print(c.value)`, output: `5` },
+        { title: "Manager for shared list", code: `from multiprocessing import Process, Manager\ndef work(lst, n):\n    lst.append(n * n)\nif __name__ == "__main__":\n    with Manager() as m:\n        shared = m.list()\n        ps = [Process(target=work, args=(shared, i)) for i in range(4)]\n        for p in ps: p.start()\n        for p in ps: p.join()\n        print(sorted(shared))`, output: `[0, 1, 4, 9]` },
+        { title: "ProcessPoolExecutor.map", code: `from concurrent.futures import ProcessPoolExecutor\ndef cube(n): return n ** 3\nif __name__ == "__main__":\n    with ProcessPoolExecutor(2) as p:\n        print(list(p.map(cube, [1,2,3,4])))`, output: `[1, 8, 27, 64]` },
+        { title: "Parallel CPU-bound computation", code: `from multiprocessing import Pool\ndef heavy(n): return sum(i*i for i in range(n))\nif __name__ == "__main__":\n    with Pool(4) as p:\n        print(sum(p.map(heavy, [10000]*4)))`, output: `1333233340000` },
+        { title: "cpu_count", code: `from multiprocessing import cpu_count\nprint("CPUs:", cpu_count() >= 1)`, output: `CPUs: True` },
+        { title: "Daemon process", code: `from multiprocessing import Process\nimport time\ndef bg():\n    while True: time.sleep(0.05)\nif __name__ == "__main__":\n    p = Process(target=bg, daemon=True)\n    p.start()\n    print("main done")`, output: `main done` },
+        { title: "Pool with chunksize", code: `from multiprocessing import Pool\ndef sq(n): return n*n\nif __name__ == "__main__":\n    with Pool(2) as p:\n        print(p.map(sq, range(10), chunksize=5))`, output: `[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]` },
+        { title: "Pool.map_async", code: `from multiprocessing import Pool\ndef double(n): return n * 2\nif __name__ == "__main__":\n    with Pool(2) as p:\n        r = p.map_async(double, [1,2,3])\n        print(r.get(timeout=5))`, output: `[2, 4, 6]` },
+        { title: "Fork vs Spawn context", code: `import multiprocessing as mp\ndef work(): print("hello from process")\nif __name__ == "__main__":\n    ctx = mp.get_context("spawn")\n    p = ctx.Process(target=work)\n    p.start(); p.join()`, output: `hello from process` },
+        { title: "Error handling with Pool", code: `from multiprocessing import Pool\ndef bad(n):\n    if n == 2: raise ValueError("no 2")\n    return n * 10\nif __name__ == "__main__":\n    with Pool(2) as p:\n        try:\n            p.map(bad, [1,2,3])\n        except ValueError as e:\n            print("caught:", e)`, output: `caught: no 2` },
+        { title: "Terminate a process", code: `from multiprocessing import Process\nimport time\ndef loop():\n    while True: time.sleep(0.1)\nif __name__ == "__main__":\n    p = Process(target=loop); p.start()\n    p.terminate(); p.join()\n    print("terminated:", p.exitcode is not None)`, output: `terminated: True` },
+        { title: "Process name", code: `from multiprocessing import Process, current_process\ndef show(): print(current_process().name)\nif __name__ == "__main__":\n    Process(target=show, name="Worker-1").start()`, output: `Worker-1` }
       ]
     }
   ]
@@ -842,6 +902,38 @@ window.DP.registerModule({
         { title: "Basic coroutine", code: `import asyncio\n\nasync def main():\n    print("hello")\n    await asyncio.sleep(1)\n    print("world")\n\nasyncio.run(main())`, output: `hello\nworld` },
         { title: "Run tasks concurrently", code: `import asyncio\n\nasync def work(n):\n    await asyncio.sleep(1)\n    return n * 2\n\nasync def main():\n    results = await asyncio.gather(work(1), work(2), work(3))\n    print(results)\n\nasyncio.run(main())`, output: `[2, 4, 6]` }
       ]
+    },
+    {
+      title: "Async — Practical Patterns",
+      badge: "Async · 25+ examples",
+      notes: ["Real asyncio patterns for high-concurrency I/O. Use for network calls, DB queries, WebSockets."],
+      examples: [
+        { title: "Basic coroutine", code: `import asyncio\nasync def hi():\n    return "hello"\nprint(asyncio.run(hi()))`, output: `hello` },
+        { title: "Sequential vs concurrent (timing)", code: `import asyncio, time\nasync def wait(n):\n    await asyncio.sleep(n)\n    return n\n\nasync def concurrent():\n    return await asyncio.gather(wait(0.1), wait(0.1), wait(0.1))\n\nstart = time.time()\nasyncio.run(concurrent())\nprint(f"{time.time()-start:.2f}s (parallel)")`, output: `0.10s (parallel)` },
+        { title: "asyncio.create_task", code: `import asyncio\nasync def work(n):\n    await asyncio.sleep(0.01)\n    return n * 2\nasync def main():\n    t1 = asyncio.create_task(work(1))\n    t2 = asyncio.create_task(work(2))\n    print(await t1, await t2)\nasyncio.run(main())`, output: `2 4` },
+        { title: "asyncio.gather with multiple", code: `import asyncio\nasync def get(url):\n    await asyncio.sleep(0.01)\n    return f"data_{url}"\nasync def main():\n    return await asyncio.gather(*[get(u) for u in ["a","b","c"]])\nprint(asyncio.run(main()))`, output: `['data_a', 'data_b', 'data_c']` },
+        { title: "gather with return_exceptions", code: `import asyncio\nasync def maybe_fail(n):\n    if n == 2: raise ValueError("bad")\n    return n\nasync def main():\n    return await asyncio.gather(maybe_fail(1), maybe_fail(2), maybe_fail(3), return_exceptions=True)\nprint(asyncio.run(main()))`, output: `[1, ValueError('bad'), 3]` },
+        { title: "asyncio.wait_for (timeout)", code: `import asyncio\nasync def slow():\n    await asyncio.sleep(1)\nasync def main():\n    try:\n        await asyncio.wait_for(slow(), timeout=0.05)\n    except asyncio.TimeoutError:\n        print("timed out")\nasyncio.run(main())`, output: `timed out` },
+        { title: "asyncio.as_completed", code: `import asyncio\nasync def work(n):\n    await asyncio.sleep(0.01 * (4-n))\n    return n\nasync def main():\n    tasks = [work(i) for i in range(4)]\n    for coro in asyncio.as_completed(tasks):\n        r = await coro\n        print(r, end=" ")\nasyncio.run(main())`, output: `3 2 1 0 ` },
+        { title: "asyncio.sleep vs time.sleep", code: `import asyncio\nasync def bad():\n    import time; time.sleep(0.01)  # blocks event loop!\nasync def good():\n    await asyncio.sleep(0.01)  # yields control\nasyncio.run(good())\nprint("good approach")`, output: `good approach` },
+        { title: "asyncio.Queue", code: `import asyncio\nasync def producer(q):\n    for i in range(3): await q.put(i)\n    await q.put(None)\nasync def consumer(q):\n    while (x := await q.get()) is not None:\n        print(x, end=" ")\nasync def main():\n    q = asyncio.Queue()\n    await asyncio.gather(producer(q), consumer(q))\nasyncio.run(main())`, output: `0 1 2 ` },
+        { title: "async with (context manager)", code: `import asyncio\nclass Session:\n    async def __aenter__(self): print("open"); return self\n    async def __aexit__(self, *a): print("close")\nasync def main():\n    async with Session():\n        print("using")\nasyncio.run(main())`, output: `open\nusing\nclose` },
+        { title: "async for (async iterator)", code: `import asyncio\nasync def counter(n):\n    for i in range(n):\n        await asyncio.sleep(0.001)\n        yield i\nasync def main():\n    async for x in counter(4):\n        print(x, end=" ")\nasyncio.run(main())`, output: `0 1 2 3 ` },
+        { title: "asyncio.Semaphore (throttle)", code: `import asyncio\nsem = asyncio.Semaphore(2)\nasync def limited(n):\n    async with sem:\n        await asyncio.sleep(0.01)\n        return n\nasync def main():\n    return await asyncio.gather(*[limited(i) for i in range(4)])\nprint(asyncio.run(main()))`, output: `[0, 1, 2, 3]` },
+        { title: "asyncio.Lock", code: `import asyncio\nlock = asyncio.Lock()\ncounter = 0\nasync def inc():\n    global counter\n    async with lock:\n        counter += 1\nasync def main():\n    await asyncio.gather(*[inc() for _ in range(5)])\nasyncio.run(main())\nprint(counter)`, output: `5` },
+        { title: "asyncio.Event", code: `import asyncio\nasync def waiter(event):\n    await event.wait()\n    print("triggered")\nasync def main():\n    e = asyncio.Event()\n    t = asyncio.create_task(waiter(e))\n    await asyncio.sleep(0.01)\n    e.set()\n    await t\nasyncio.run(main())`, output: `triggered` },
+        { title: "Cancel a task", code: `import asyncio\nasync def slow():\n    try:\n        await asyncio.sleep(10)\n    except asyncio.CancelledError:\n        print("cancelled"); raise\nasync def main():\n    t = asyncio.create_task(slow())\n    await asyncio.sleep(0.01); t.cancel()\n    try: await t\n    except asyncio.CancelledError: print("done")\nasyncio.run(main())`, output: `cancelled\ndone` },
+        { title: "asyncio.shield (prevent cancel)", code: `import asyncio\nasync def critical():\n    await asyncio.sleep(0.02)\n    return "done"\nasync def main():\n    t = asyncio.create_task(critical())\n    r = await asyncio.shield(t)\n    print(r)\nasyncio.run(main())`, output: `done` },
+        { title: "TaskGroup (Python 3.11+)", code: `import asyncio\nasync def work(n):\n    await asyncio.sleep(0.01)\n    return n\nasync def main():\n    async with asyncio.TaskGroup() as tg:\n        r1 = tg.create_task(work(1))\n        r2 = tg.create_task(work(2))\n    print(r1.result(), r2.result())\nasyncio.run(main())`, output: `1 2` },
+        { title: "run_in_executor for sync code", code: `import asyncio, time\ndef blocking(): time.sleep(0.01); return "sync-done"\nasync def main():\n    loop = asyncio.get_event_loop()\n    r = await loop.run_in_executor(None, blocking)\n    print(r)\nasyncio.run(main())`, output: `sync-done` },
+        { title: "Timeout context (3.11+)", code: `import asyncio\nasync def slow(): await asyncio.sleep(1)\nasync def main():\n    try:\n        async with asyncio.timeout(0.05):\n            await slow()\n    except TimeoutError:\n        print("timed out")\nasyncio.run(main())`, output: `timed out` },
+        { title: "Fetch multiple URLs (simulated)", code: `import asyncio\nasync def fetch(url):\n    await asyncio.sleep(0.01)\n    return f"200 {url}"\nasync def main():\n    urls = [f"page{i}" for i in range(5)]\n    return await asyncio.gather(*[fetch(u) for u in urls])\nprint(asyncio.run(main()))`, output: `['200 page0', '200 page1', '200 page2', '200 page3', '200 page4']` },
+        { title: "Background task pattern", code: `import asyncio\nasync def background():\n    while True:\n        await asyncio.sleep(0.05)\n        print("tick", end=" ")\n        break\nasync def main():\n    t = asyncio.create_task(background())\n    await t\nasyncio.run(main())`, output: `tick ` },
+        { title: "Async generator with anext", code: `import asyncio\nasync def gen():\n    for i in range(3):\n        await asyncio.sleep(0.001)\n        yield i\nasync def main():\n    g = gen()\n    print(await anext(g), await anext(g))\nasyncio.run(main())`, output: `0 1` },
+        { title: "asyncio.run vs get_event_loop", code: `import asyncio\nasync def hi(): return "hi"\n# Modern: asyncio.run() creates and closes the loop\nprint(asyncio.run(hi()))`, output: `hi` },
+        { title: "Chained async functions", code: `import asyncio\nasync def fetch(): await asyncio.sleep(0.005); return "raw"\nasync def parse(data): await asyncio.sleep(0.005); return data.upper()\nasync def main():\n    data = await fetch()\n    print(await parse(data))\nasyncio.run(main())`, output: `RAW` },
+        { title: "Producer-consumer with Queue", code: `import asyncio\nasync def producer(q, n):\n    for i in range(n): await q.put(i)\n    await q.put(None)\nasync def consumer(q):\n    total = 0\n    while (x := await q.get()) is not None:\n        total += x\n    return total\nasync def main():\n    q = asyncio.Queue()\n    _, r = await asyncio.gather(producer(q, 5), consumer(q))\n    print(r)\nasyncio.run(main())`, output: `10` }
+      ]
     }
   ]
 });
@@ -861,6 +953,33 @@ window.DP.registerModule({
         { title: "Basic logging", code: `import logging\nlogging.basicConfig(level=logging.INFO)\nlogging.info("Service started")\nlogging.warning("Low disk space")`, output: `INFO:root:Service started\nWARNING:root:Low disk space` },
         { title: "Log to a file with format", code: `import logging\nlogging.basicConfig(\n    filename="app.log",\n    level=logging.DEBUG,\n    format="%(asctime)s %(levelname)s %(message)s")\nlogging.error("Something failed")`, output: `# writes: 2024-... ERROR Something failed` }
       ]
+    },
+    {
+      title: "Logging — Production Patterns",
+      badge: "Logging · 20+ examples",
+      notes: ["Production logging replaces print() with structured, filterable, routable log output."],
+      examples: [
+        { title: "5 log levels", code: `import logging\nlogging.basicConfig(level=logging.DEBUG)\nlogging.debug("detail"); logging.info("info")\nlogging.warning("warn"); logging.error("err")\nlogging.critical("critical")`, output: `DEBUG:root:detail\nINFO:root:info\nWARNING:root:warn\nERROR:root:err\nCRITICAL:root:critical` },
+        { title: "Named logger (module scope)", code: `import logging\nlog = logging.getLogger("app.core")\nlogging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")\nlog.info("hello")`, output: `app.core: hello` },
+        { title: "Structured format", code: `import logging\nlogging.basicConfig(\n    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",\n    datefmt="%H:%M:%S",\n    level=logging.INFO)\nlogging.info("started")`, output: `10:30:15 [INFO] root - started` },
+        { title: "Log to console + file", code: `import logging\nlog = logging.getLogger("app")\nlog.setLevel(logging.DEBUG)\nfh = logging.FileHandler("app.log")\nch = logging.StreamHandler()\nlog.addHandler(fh); log.addHandler(ch)\nlog.info("dual output")`, output: `dual output` },
+        { title: "Log exception with traceback", code: `import logging\nlogging.basicConfig(level=logging.INFO)\ntry:\n    1/0\nexcept ZeroDivisionError:\n    logging.exception("failed to divide")`, output: `# ERROR with full traceback` },
+        { title: "Log with extra context", code: `import logging\nlogging.basicConfig(level=logging.INFO, format="%(user)s: %(message)s")\nlogging.info("login", extra={"user": "alice"})`, output: `alice: login` },
+        { title: "Rotate log files by size", code: `from logging.handlers import RotatingFileHandler\nimport logging\nh = RotatingFileHandler("app.log", maxBytes=10_000, backupCount=3)\nlog = logging.getLogger("rot"); log.addHandler(h); log.setLevel(logging.INFO)\nlog.info("rotated log")`, output: `# rotates when file hits 10KB` },
+        { title: "Time-based rotation (daily)", code: `from logging.handlers import TimedRotatingFileHandler\nh = TimedRotatingFileHandler("app.log", when="midnight", backupCount=7)\nprint("daily rotation set up")`, output: `daily rotation set up` },
+        { title: "Log to syslog (Unix)", code: `import logging\nfrom logging.handlers import SysLogHandler\n# h = SysLogHandler(address="/dev/log")\nprint("syslog handler configured")`, output: `syslog handler configured` },
+        { title: "Custom formatter class", code: `import logging\nclass ColorFmt(logging.Formatter):\n    def format(self, r):\n        return f"[{r.levelname[0]}] {r.getMessage()}"\nlog = logging.getLogger("c"); log.setLevel(logging.INFO)\nh = logging.StreamHandler(); h.setFormatter(ColorFmt())\nlog.addHandler(h); log.info("hi")`, output: `[I] hi` },
+        { title: "Suppress lower-level messages", code: `import logging\nlogging.basicConfig(level=logging.WARNING)\nlogging.info("hidden"); logging.warning("shown")`, output: `WARNING:root:shown` },
+        { title: "Config from dict", code: `import logging.config\ncfg = {\n    "version": 1,\n    "handlers": {"h":{"class":"logging.StreamHandler","level":"INFO"}},\n    "root": {"handlers":["h"], "level":"INFO"}\n}\nlogging.config.dictConfig(cfg)\nlogging.info("configured")`, output: `configured` },
+        { title: "Filter by level programmatically", code: `import logging\nclass OnlyError(logging.Filter):\n    def filter(self, r): return r.levelno == logging.ERROR\nlog = logging.getLogger("f"); log.setLevel(logging.DEBUG)\nh = logging.StreamHandler(); h.addFilter(OnlyError())\nlog.addHandler(h)\nlog.info("no"); log.error("yes")`, output: `yes` },
+        { title: "Include file/line in log", code: `import logging\nlogging.basicConfig(format="%(filename)s:%(lineno)d %(message)s", level=logging.INFO)\nlogging.info("check")`, output: `<file>:X check` },
+        { title: "Structured JSON logs", code: `import logging, json\nclass JsonFmt(logging.Formatter):\n    def format(self, r):\n        return json.dumps({"lvl": r.levelname, "msg": r.getMessage()})\nh = logging.StreamHandler(); h.setFormatter(JsonFmt())\nlog = logging.getLogger("j"); log.addHandler(h); log.setLevel(logging.INFO)\nlog.info("ok")`, output: `{"lvl": "INFO", "msg": "ok"}` },
+        { title: "Log function calls with decorator", code: `import logging, functools\nlogging.basicConfig(level=logging.INFO)\ndef logged(fn):\n    @functools.wraps(fn)\n    def w(*a, **kw):\n        logging.info(f"call {fn.__name__}{a}")\n        return fn(*a, **kw)\n    return w\n@logged\ndef add(a,b): return a+b\nadd(2, 3)`, output: `INFO:root:call add(2, 3)` },
+        { title: "getLogger returns same instance", code: `import logging\na = logging.getLogger("shared")\nb = logging.getLogger("shared")\nprint(a is b)`, output: `True` },
+        { title: "Prevent propagation to root", code: `import logging\nlog = logging.getLogger("private")\nlog.propagate = False\nlog.info("won't reach root")\nprint("done")`, output: `done` },
+        { title: "Level as int constant", code: `import logging\nprint(logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL)`, output: `10 20 30 40 50` },
+        { title: "logger.makeRecord (advanced)", code: `import logging\nlog = logging.getLogger("adv")\n# Standard pattern: use log.info/warning etc\nlog.log(logging.INFO, "custom level use")\nprint("logged")`, output: `logged` }
+      ]
     }
   ]
 });
@@ -879,6 +998,34 @@ window.DP.registerModule({
       examples: [
         { title: "Set a breakpoint", code: `def divide(a, b):\n    breakpoint()   # execution pauses here\n    return a / b\n\ndivide(10, 2)`, output: `(Pdb) p a\n10` },
         { title: "Invoke pdb manually", code: `import pdb\n\ndef buggy():\n    x = 5\n    pdb.set_trace()\n    return x * 2\n\nbuggy()`, output: `(Pdb) c` }
+      ]
+    },
+    {
+      title: "Debugging — Techniques",
+      badge: "Debug · 20+ examples",
+      notes: ["Practical debugging patterns beyond print()."],
+      examples: [
+        { title: "assert for invariants", code: `def divide(a, b):\n    assert b != 0, "b must be non-zero"\n    return a / b\nprint(divide(10, 2))`, output: `5.0` },
+        { title: "traceback module", code: `import traceback\ntry:\n    1 / 0\nexcept Exception:\n    print(traceback.format_exc().splitlines()[-1])`, output: `ZeroDivisionError: division by zero` },
+        { title: "Print stack from anywhere", code: `import traceback\ndef foo():\n    print(traceback.extract_stack()[-2].name)\ndef bar(): foo()\nbar()`, output: `bar` },
+        { title: "sys.exc_info", code: `import sys\ntry:\n    int("abc")\nexcept ValueError:\n    exc_type, exc_val, _ = sys.exc_info()\n    print(exc_type.__name__, exc_val)`, output: `ValueError invalid literal for int() with base 10: 'abc'` },
+        { title: "repr() for readable variables", code: `s = "hello\\nworld"\nprint(s)\nprint(repr(s))`, output: `hello\nworld\n'hello\\nworld'` },
+        { title: "pprint for nested structures", code: `import pprint\ndata = {"users": [{"n":"A","tags":[1,2,3]}, {"n":"B"}]}\npprint.pprint(data)`, output: `{'users': [{'n': 'A', 'tags': [1, 2, 3]}, {'n': 'B'}]}` },
+        { title: "f-string debug format (3.8+)", code: `x = 42; y = 3.14\nprint(f"{x=}, {y=}")`, output: `x=42, y=3.14` },
+        { title: "logging vs print for debug", code: `import logging\nlogging.basicConfig(level=logging.DEBUG)\nx = 42\nlogging.debug(f"x is {x}")\nprint("visible in output")`, output: `DEBUG:root:x is 42\nvisible in output` },
+        { title: "warnings module", code: `import warnings\nwarnings.warn("This function is deprecated")\nprint("continues")`, output: `continues` },
+        { title: "sys.getsizeof memory check", code: `import sys\na = [x for x in range(100)]\nprint(sys.getsizeof(a) > 0)`, output: `True` },
+        { title: "gc get_objects count", code: `import gc\ncount = len(gc.get_objects())\nprint("objects tracked:", count > 100)`, output: `objects tracked: True` },
+        { title: "dis module — inspect bytecode", code: `import dis\ndef f(): return 1 + 2\ndis.dis(f)`, output: `# LOAD_CONST + RETURN_VALUE bytecode` },
+        { title: "inspect.getsource", code: `import inspect\ndef sample(x): return x + 1\nprint(inspect.getsource(sample).strip())`, output: `def sample(x): return x + 1` },
+        { title: "inspect.getmembers", code: `import inspect\nclass C:\n    def m(self): pass\nmembers = [n for n, _ in inspect.getmembers(C) if not n.startswith("_")]\nprint(members)`, output: `['m']` },
+        { title: "timeit for micro-benchmarks", code: `import timeit\nt = timeit.timeit("x = [i*i for i in range(100)]", number=1000)\nprint(f"{t:.4f}s")`, output: `0.0234s` },
+        { title: "cProfile snapshot", code: `import cProfile, pstats, io\npr = cProfile.Profile()\npr.enable()\nsum(range(100000))\npr.disable()\ns = io.StringIO()\npstats.Stats(pr, stream=s).sort_stats("cumtime").print_stats(0)\nprint("profiled")`, output: `profiled` },
+        { title: "breakpoint() (3.7+)", code: `def check(x):\n    # breakpoint()  # drops into pdb here\n    return x * 2\nprint(check(5))`, output: `10` },
+        { title: "Custom __repr__ for debug", code: `class User:\n    def __init__(self, name): self.name = name\n    def __repr__(self): return f"User(name={self.name!r})"\nprint(User("Sara"))`, output: `User(name='Sara')` },
+        { title: "Rich traceback (with locals)", code: `import traceback\ntry:\n    x = 5\n    y = "abc"\n    print(x + y)\nexcept TypeError:\n    lines = traceback.format_exc().splitlines()\n    print(lines[-1])`, output: `TypeError: unsupported operand type(s) for +: 'int' and 'str'` },
+        { title: "faulthandler for crashes", code: `import faulthandler\nfaulthandler.enable()\nprint("crash handler on")`, output: `crash handler on` },
+        { title: "sys.settrace (advanced)", code: `import sys\ndef tracer(frame, event, arg):\n    if event == "call":\n        print(f"call {frame.f_code.co_name}")\n    return tracer\n# sys.settrace(tracer)  # enables per-line tracing\nprint("tracer defined")`, output: `tracer defined` }
       ]
     }
   ]
@@ -900,6 +1047,38 @@ window.DP.registerModule({
         { title: "Query rows", code: `cur.execute("SELECT * FROM users")\nprint(cur.fetchall())`, output: `[(1, 'Ravi')]` },
         { title: "Parameterized query (safe)", code: `name = "Ravi"\ncur.execute("SELECT * FROM users WHERE name = ?", (name,))\nprint(cur.fetchone())`, output: `(1, 'Ravi')` }
       ]
+    },
+    {
+      title: "Database — Practical",
+      badge: "DB · 25+ examples",
+      notes: ["Production database patterns with sqlite3 (transferable to Postgres/MySQL)."],
+      examples: [
+        { title: "Create table + insert + query", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE users(id INT, name TEXT)")\ndb.execute("INSERT INTO users VALUES (?, ?)", (1, "Sara"))\ndb.commit()\nprint(db.execute("SELECT name FROM users").fetchone())`, output: `('Sara',)` },
+        { title: "Insert many rows", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(a INT)")\ndb.executemany("INSERT INTO t VALUES (?)", [(1,),(2,),(3,)])\ndb.commit()\nprint(db.execute("SELECT COUNT(*) FROM t").fetchone()[0])`, output: `3` },
+        { title: "Fetch all rows", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT)")\ndb.executemany("INSERT INTO t VALUES(?)", [(i,) for i in range(3)])\nprint(db.execute("SELECT * FROM t").fetchall())`, output: `[(0,), (1,), (2,)]` },
+        { title: "Fetch one and iterate", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT)")\ndb.executemany("INSERT INTO t VALUES(?)", [(i,) for i in range(5)])\nfor row in db.execute("SELECT x FROM t WHERE x > 2"):\n    print(row)`, output: `(3,)\n(4,)` },
+        { title: "Update rows", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(id INT, name TEXT)")\ndb.execute("INSERT INTO t VALUES(1, 'old')")\ndb.execute("UPDATE t SET name=? WHERE id=?", ("new", 1))\ndb.commit()\nprint(db.execute("SELECT name FROM t").fetchone())`, output: `('new',)` },
+        { title: "Delete rows", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT)")\ndb.executemany("INSERT INTO t VALUES(?)", [(1,),(2,),(3,)])\ndb.execute("DELETE FROM t WHERE x=?", (2,))\ndb.commit()\nprint(db.execute("SELECT * FROM t").fetchall())`, output: `[(1,), (3,)]` },
+        { title: "Transaction with commit/rollback", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT UNIQUE)")\ntry:\n    db.execute("INSERT INTO t VALUES(1)")\n    db.execute("INSERT INTO t VALUES(1)")  # violates unique\n    db.commit()\nexcept sqlite3.IntegrityError:\n    db.rollback()\nprint(db.execute("SELECT COUNT(*) FROM t").fetchone()[0])`, output: `0` },
+        { title: "SQL with 'with' (auto-commit/rollback)", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT)")\nwith db:\n    db.execute("INSERT INTO t VALUES(42)")\nprint(db.execute("SELECT * FROM t").fetchone())`, output: `(42,)` },
+        { title: "row_factory as dict", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.row_factory = sqlite3.Row\ndb.execute("CREATE TABLE t(id INT, name TEXT)")\ndb.execute("INSERT INTO t VALUES(1, 'A')")\nrow = db.execute("SELECT * FROM t").fetchone()\nprint(dict(row))`, output: `{'id': 1, 'name': 'A'}` },
+        { title: "Aggregate SUM/AVG/COUNT", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE sales(amt INT)")\ndb.executemany("INSERT INTO sales VALUES(?)", [(100,),(200,),(300,)])\nprint(db.execute("SELECT COUNT(*), SUM(amt), AVG(amt) FROM sales").fetchone())`, output: `(3, 600, 200.0)` },
+        { title: "GROUP BY", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE orders(city TEXT, amt INT)")\ndb.executemany("INSERT INTO orders VALUES(?, ?)", [("A",100),("B",50),("A",200),("B",75)])\nfor row in db.execute("SELECT city, SUM(amt) FROM orders GROUP BY city"):\n    print(row)`, output: `('A', 300)\n('B', 125)` },
+        { title: "ORDER BY", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(name TEXT, score INT)")\ndb.executemany("INSERT INTO t VALUES(?, ?)", [("A",80),("B",95),("C",70)])\nprint(db.execute("SELECT name FROM t ORDER BY score DESC").fetchall())`, output: `[('B',), ('A',), ('C',)]` },
+        { title: "JOIN two tables", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE users(id INT, name TEXT)")\ndb.execute("CREATE TABLE orders(uid INT, item TEXT)")\ndb.execute("INSERT INTO users VALUES(1, 'Sara')")\ndb.execute("INSERT INTO orders VALUES(1, 'Book')")\nrow = db.execute("SELECT u.name, o.item FROM users u JOIN orders o ON u.id=o.uid").fetchone()\nprint(row)`, output: `('Sara', 'Book')` },
+        { title: "LIMIT and OFFSET", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT)")\ndb.executemany("INSERT INTO t VALUES(?)", [(i,) for i in range(10)])\nprint(db.execute("SELECT x FROM t LIMIT 3 OFFSET 5").fetchall())`, output: `[(5,), (6,), (7,)]` },
+        { title: "PRAGMA foreign_keys ON", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("PRAGMA foreign_keys=ON")\ndb.execute("CREATE TABLE users(id INT PRIMARY KEY)")\ndb.execute("CREATE TABLE posts(uid INT, FOREIGN KEY(uid) REFERENCES users(id))")\nprint("FK enabled")`, output: `FK enabled` },
+        { title: "Index for faster lookups", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE users(id INT, email TEXT)")\ndb.execute("CREATE INDEX idx_email ON users(email)")\nprint("index created")`, output: `index created` },
+        { title: "LIKE for pattern search", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(name TEXT)")\ndb.executemany("INSERT INTO t VALUES(?)", [("Alice",),("Bob",),("Amir",)])\nprint(db.execute("SELECT name FROM t WHERE name LIKE 'A%'").fetchall())`, output: `[('Alice',), ('Amir',)]` },
+        { title: "IN operator", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(id INT)")\ndb.executemany("INSERT INTO t VALUES(?)", [(1,),(2,),(3,)])\nplace = ",".join("?" * 3)\nprint(db.execute(f"SELECT * FROM t WHERE id IN ({place})", (1,2,4)).fetchall())`, output: `[(1,), (2,)]` },
+        { title: "AUTOINCREMENT PK", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")\ndb.execute("INSERT INTO t(name) VALUES('A')")\ndb.execute("INSERT INTO t(name) VALUES('B')")\ndb.commit()\nprint(db.execute("SELECT * FROM t").fetchall())`, output: `[(1, 'A'), (2, 'B')]` },
+        { title: "Context manager for connection", code: `import sqlite3\nfrom contextlib import contextmanager\n@contextmanager\ndef conn(path):\n    db = sqlite3.connect(path)\n    try: yield db; db.commit()\n    except: db.rollback(); raise\n    finally: db.close()\n\nwith conn(":memory:") as db:\n    db.execute("CREATE TABLE t(x INT)")\n    db.execute("INSERT INTO t VALUES(1)")\nprint("ok")`, output: `ok` },
+        { title: "SQL injection SAFE vs UNSAFE", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE u(name TEXT)")\ndb.execute("INSERT INTO u VALUES('admin')")\nuser_input = "admin"\n# SAFE:\nprint(db.execute("SELECT * FROM u WHERE name=?", (user_input,)).fetchone())`, output: `('admin',)` },
+        { title: "Bulk insert with transaction (fast)", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(x INT)")\ndata = [(i,) for i in range(10000)]\nwith db:\n    db.executemany("INSERT INTO t VALUES(?)", data)\nprint(db.execute("SELECT COUNT(*) FROM t").fetchone()[0])`, output: `10000` },
+        { title: "Named parameters (:name)", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(name TEXT, age INT)")\ndb.execute("INSERT INTO t VALUES(:n, :a)", {"n":"Sara", "a":30})\nprint(db.execute("SELECT * FROM t").fetchone())`, output: `('Sara', 30)` },
+        { title: "COUNT DISTINCT", code: `import sqlite3\ndb = sqlite3.connect(":memory:")\ndb.execute("CREATE TABLE t(dept TEXT)")\ndb.executemany("INSERT INTO t VALUES(?)", [("A",),("B",),("A",),("C",)])\nprint(db.execute("SELECT COUNT(DISTINCT dept) FROM t").fetchone())`, output: `(3,)` },
+        { title: "Backup DB in memory to file", code: `import sqlite3\nsrc = sqlite3.connect(":memory:")\nsrc.execute("CREATE TABLE t(x INT)")\nsrc.execute("INSERT INTO t VALUES(1)")\n# dst = sqlite3.connect('backup.db'); src.backup(dst); dst.close()\nprint("backup pattern")`, output: `backup pattern` }
+      ]
     }
   ]
 });
@@ -918,6 +1097,34 @@ window.DP.registerModule({
       examples: [
         { title: "TCP server (skeleton)", code: `import socket\ns = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\ns.bind(("localhost", 9999))\ns.listen(1)\nprint("listening on 9999...")\nconn, addr = s.accept()\ndata = conn.recv(1024)\nconn.sendall(b"echo: " + data)\nconn.close()`, output: `listening on 9999...` },
         { title: "TCP client (skeleton)", code: `import socket\nc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\nc.connect(("localhost", 9999))\nc.sendall(b"hello")\nprint(c.recv(1024))\nc.close()`, output: `b'echo: hello'` }
+      ]
+    },
+    {
+      title: "Networking — Practical",
+      badge: "Network · 20+ examples",
+      notes: ["Practical socket, DNS, and low-level networking patterns in pure Python."],
+      examples: [
+        { title: "Get hostname", code: `import socket\nprint(socket.gethostname())`, output: `# your machine name` },
+        { title: "Get local IP", code: `import socket\nhostname = socket.gethostname()\nprint(socket.gethostbyname(hostname))`, output: `127.0.0.1 or your LAN IP` },
+        { title: "DNS lookup by name", code: `import socket\nip = socket.gethostbyname("python.org")\nprint(ip)`, output: `# python.org's IP` },
+        { title: "Reverse DNS lookup", code: `import socket\ntry:\n    name = socket.gethostbyaddr("8.8.8.8")\n    print(name[0])\nexcept: print("dns.google")`, output: `dns.google` },
+        { title: "TCP socket create", code: `import socket\ns = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\nprint(type(s).__name__)\ns.close()`, output: `socket` },
+        { title: "UDP socket create", code: `import socket\ns = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\nprint("UDP socket")\ns.close()`, output: `UDP socket` },
+        { title: "Check port open", code: `import socket\ndef port_open(host, port, timeout=1):\n    s = socket.socket()\n    s.settimeout(timeout)\n    try:\n        s.connect((host, port)); return True\n    except: return False\n    finally: s.close()\n\nprint(port_open("google.com", 80))`, output: `True` },
+        { title: "URL parsing", code: `from urllib.parse import urlparse\nu = urlparse("https://user:pw@example.com:8080/path?q=1#top")\nprint(u.scheme, u.hostname, u.port, u.path)`, output: `https example.com 8080 /path` },
+        { title: "URL encode/decode", code: `from urllib.parse import quote, unquote\nprint(quote("hello world"))\nprint(unquote("hello%20world"))`, output: `hello%20world\nhello world` },
+        { title: "Build query string", code: `from urllib.parse import urlencode\nprint(urlencode({"q":"python","page":2}))`, output: `q=python&page=2` },
+        { title: "Parse query string", code: `from urllib.parse import parse_qs\nprint(parse_qs("q=python&page=2"))`, output: `{'q': ['python'], 'page': ['2']}` },
+        { title: "urllib.request GET", code: `from urllib import request\nreq = request.Request("https://httpbin.org/get")\n# with request.urlopen(req) as r:\n#     print(r.status)\nprint("GET pattern")`, output: `GET pattern` },
+        { title: "Send HTTP with headers", code: `from urllib import request\nreq = request.Request("https://api.example.com",\n    headers={"User-Agent": "MyApp/1.0", "Accept": "application/json"})\nprint(req.headers)`, output: `{'User-agent': 'MyApp/1.0', 'Accept': 'application/json'}` },
+        { title: "IP address validation", code: `import ipaddress\ntry:\n    ip = ipaddress.ip_address("192.168.1.1")\n    print(ip.version, ip.is_private)\nexcept ValueError:\n    print("invalid")`, output: `4 True` },
+        { title: "IPv4 vs IPv6", code: `import ipaddress\nprint(ipaddress.ip_address("::1"))\nprint(ipaddress.ip_address("192.168.0.1"))`, output: `::1\n192.168.0.1` },
+        { title: "Network subnet check", code: `import ipaddress\nnet = ipaddress.ip_network("192.168.1.0/24")\nprint(ipaddress.ip_address("192.168.1.100") in net)`, output: `True` },
+        { title: "Port scanner (pattern)", code: `import socket\ndef scan(host, ports):\n    open_ports = []\n    for p in ports:\n        s = socket.socket(); s.settimeout(0.5)\n        try:\n            s.connect((host, p)); open_ports.append(p)\n        except: pass\n        finally: s.close()\n    return open_ports\n\nprint("scanner defined")`, output: `scanner defined` },
+        { title: "Get server address info", code: `import socket\nfor family, _, _, _, addr in socket.getaddrinfo("python.org", 80)[:1]:\n    print(family.name, addr)`, output: `AddressFamily.AF_INET ('...', 80)` },
+        { title: "Simple UDP echo (skeleton)", code: `import socket\n# server\n# s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\n# s.bind(("localhost", 9999))\n# data, addr = s.recvfrom(1024)\nprint("UDP skeleton")`, output: `UDP skeleton` },
+        { title: "SO_REUSEADDR option", code: `import socket\ns = socket.socket()\ns.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\nprint("reuse addr set")\ns.close()`, output: `reuse addr set` },
+        { title: "Send email via smtplib (pattern)", code: `import smtplib\nfrom email.mime.text import MIMEText\nmsg = MIMEText("Hello!")\nmsg["Subject"] = "Test"\nmsg["From"] = "me@example.com"\nmsg["To"] = "you@example.com"\n# with smtplib.SMTP("smtp.gmail.com", 587) as s:\n#     s.starttls(); s.login(user, pwd); s.send_message(msg)\nprint("email pattern ready")`, output: `email pattern ready` }
       ]
     }
   ]
@@ -939,6 +1146,33 @@ window.DP.registerModule({
         { title: "POST with JSON", code: `import requests\npayload = {"name": "Sara"}\nr = requests.post("https://api.example.com/users", json=payload)\nprint(r.status_code)`, output: `201` },
         { title: "Auth header", code: `import requests\nheaders = {"Authorization": "Bearer TOKEN123"}\nr = requests.get("https://api.example.com/me", headers=headers)\nprint(r.json())`, output: `{'user': 'me'}` }
       ]
+    },
+    {
+      title: "APIs — Practical Patterns",
+      badge: "APIs · 20+ examples",
+      notes: ["Real REST API patterns with requests and http.client."],
+      examples: [
+        { title: "GET with query params", code: `import requests\nr = requests.get("https://api.example.com/search",\n    params={"q": "python", "limit": 10})\nprint(r.url)`, output: `https://api.example.com/search?q=python&limit=10` },
+        { title: "POST JSON payload", code: `import requests\nr = requests.post("https://api.example.com/users",\n    json={"name": "Sara", "age": 30})\nprint(r.status_code)`, output: `201` },
+        { title: "PUT (full update)", code: `import requests\nr = requests.put("https://api.example.com/users/1",\n    json={"name": "New", "age": 25})\nprint(r.status_code)`, output: `200` },
+        { title: "PATCH (partial update)", code: `import requests\nr = requests.patch("https://api.example.com/users/1",\n    json={"name": "Updated"})\nprint(r.status_code)`, output: `200` },
+        { title: "DELETE", code: `import requests\nr = requests.delete("https://api.example.com/users/1")\nprint(r.status_code)`, output: `204` },
+        { title: "Timeout to prevent hang", code: `import requests\ntry:\n    r = requests.get("https://slow.example.com", timeout=(3, 10))\n    print(r.status_code)\nexcept requests.Timeout:\n    print("timed out")`, output: `timed out` },
+        { title: "Session with connection reuse", code: `import requests\nwith requests.Session() as s:\n    s.headers.update({"User-Agent": "MyApp"})\n    # multiple requests reuse TCP connection\n    print("session ready")`, output: `session ready` },
+        { title: "Retry with urllib3", code: `import requests\nfrom requests.adapters import HTTPAdapter\nfrom urllib3.util.retry import Retry\nretry = Retry(total=3, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])\ns = requests.Session()\ns.mount("https://", HTTPAdapter(max_retries=retry))\nprint("retry configured")`, output: `retry configured` },
+        { title: "Basic Auth", code: `import requests\nfrom requests.auth import HTTPBasicAuth\nr = requests.get("https://api.example.com",\n    auth=HTTPBasicAuth("user", "pass"))\nprint(r.status_code)`, output: `200` },
+        { title: "Bearer token (JWT)", code: `import requests\ntoken = "eyJhbGc..."\nr = requests.get("https://api.example.com/me",\n    headers={"Authorization": f"Bearer {token}"})\nprint("authenticated")`, output: `authenticated` },
+        { title: "Custom headers", code: `import requests\nr = requests.get("https://api.example.com",\n    headers={\n        "Accept": "application/json",\n        "X-Client-Version": "1.0",\n        "X-Request-ID": "abc123"\n    })\nprint("headers sent")`, output: `headers sent` },
+        { title: "Upload file (multipart)", code: `import requests\n# with open("photo.jpg", "rb") as f:\n#     r = requests.post("https://api.example.com/upload",\n#         files={"file": f})\nprint("upload pattern")`, output: `upload pattern` },
+        { title: "Download file (streaming)", code: `import requests\n# with requests.get("https://example.com/big.zip", stream=True) as r:\n#     with open("big.zip", "wb") as f:\n#         for chunk in r.iter_content(8192):\n#             f.write(chunk)\nprint("stream download pattern")`, output: `stream download pattern` },
+        { title: "Response status handling", code: `import requests\nr = requests.get("https://api.example.com")\ntry:\n    r.raise_for_status()\n    data = r.json()\nexcept requests.HTTPError as e:\n    print(f"HTTP {e.response.status_code}")`, output: `HTTP 404` },
+        { title: "Get response headers", code: `import requests\nr = requests.get("https://httpbin.org/get")\n# print(r.headers.get("Content-Type"))\nprint("Content-Type check")`, output: `Content-Type check` },
+        { title: "URL encoding", code: `from urllib.parse import quote\nprint(quote("data with spaces & symbols"))`, output: `data%20with%20spaces%20%26%20symbols` },
+        { title: "GraphQL-style POST", code: `import requests\nquery = "{ user(id: 1) { name email } }"\n# r = requests.post("https://api.example.com/graphql",\n#     json={"query": query})\nprint("graphql pattern")`, output: `graphql pattern` },
+        { title: "Pagination with cursor", code: `import requests\ndef fetch_all(url):\n    while url:\n        # r = requests.get(url).json()\n        r = {"items": [1,2], "next": None}  # simulated\n        yield from r["items"]\n        url = r.get("next")\n\nprint(list(fetch_all("https://api.example.com/items")))`, output: `[1, 2]` },
+        { title: "Handle rate limiting (429)", code: `import requests, time\ndef safe_get(url):\n    while True:\n        r = requests.get(url)\n        if r.status_code == 429:\n            wait = int(r.headers.get("Retry-After", 1))\n            time.sleep(wait)\n            continue\n        return r\nprint("rate limit handler ready")`, output: `rate limit handler ready` },
+        { title: "OAuth 2 client credentials flow (pattern)", code: `import requests\n# r = requests.post("https://oauth.example.com/token",\n#     data={"grant_type": "client_credentials",\n#           "client_id": "abc", "client_secret": "xyz"})\n# token = r.json()["access_token"]\nprint("oauth pattern")`, output: `oauth pattern` }
+      ]
     }
   ]
 });
@@ -957,6 +1191,38 @@ window.DP.registerModule({
       examples: [
         { title: "unittest", code: `import unittest\n\ndef add(a, b):\n    return a + b\n\nclass TestAdd(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n\nif __name__ == "__main__":\n    unittest.main()`, output: `Ran 1 test in 0.000s\nOK` },
         { title: "pytest style", code: `def add(a, b):\n    return a + b\n\ndef test_add():\n    assert add(2, 3) == 5\n    assert add(-1, 1) == 0`, output: `1 passed` }
+      ]
+    },
+    {
+      title: "Testing — Practical Patterns",
+      badge: "Testing · 25+ examples",
+      notes: ["Real pytest/unittest patterns for production test suites."],
+      examples: [
+        { title: "Basic pytest test", code: `def divide(a, b):\n    return a / b\n\ndef test_divide():\n    assert divide(10, 2) == 5\n    assert divide(9, 3) == 3`, output: `2 passed` },
+        { title: "Test raising exception", code: `import pytest\ndef divide(a, b):\n    if b == 0: raise ValueError("no zero")\n    return a / b\n\ndef test_zero():\n    with pytest.raises(ValueError, match="no zero"):\n        divide(1, 0)`, output: `passed` },
+        { title: "Parametrized tests", code: `import pytest\n@pytest.mark.parametrize("a,b,exp", [\n    (2, 3, 5),\n    (-1, 1, 0),\n    (0, 0, 0),\n])\ndef test_add(a, b, exp):\n    assert a + b == exp`, output: `3 passed` },
+        { title: "Fixture (setup/teardown)", code: `import pytest\n@pytest.fixture\ndef sample_data():\n    return [1, 2, 3, 4, 5]\n\ndef test_sum(sample_data):\n    assert sum(sample_data) == 15\n\ndef test_len(sample_data):\n    assert len(sample_data) == 5`, output: `2 passed` },
+        { title: "Fixture with yield (teardown)", code: `import pytest\n@pytest.fixture\ndef temp_file(tmp_path):\n    f = tmp_path / "test.txt"\n    f.write_text("hello")\n    yield f  # teardown after yield\n    # cleanup runs here (tmp_path auto-cleans)\n\ndef test_read(temp_file):\n    assert temp_file.read_text() == "hello"`, output: `1 passed` },
+        { title: "Fixture scope=session", code: `import pytest\n@pytest.fixture(scope="session")\ndef db():\n    print("expensive setup once")\n    yield "db_conn"\n    print("teardown once")\n\ndef test_a(db): assert db == "db_conn"\ndef test_b(db): assert db == "db_conn"`, output: `2 passed (setup runs once)` },
+        { title: "Skip test", code: `import pytest, sys\n@pytest.mark.skipif(sys.version_info < (3, 10), reason="needs 3.10+")\ndef test_new_feature():\n    match "x":\n        case "x": assert True`, output: `1 passed` },
+        { title: "Expected failure (xfail)", code: `import pytest\n@pytest.mark.xfail(reason="known bug")\ndef test_bug():\n    assert 1 == 2`, output: `1 xfailed` },
+        { title: "Mock a function", code: `from unittest.mock import Mock\nmock_api = Mock(return_value={"status": "ok"})\nprint(mock_api())\nprint(mock_api.called, mock_api.call_count)`, output: `{'status': 'ok'}\nTrue 1` },
+        { title: "MagicMock supports magic methods", code: `from unittest.mock import MagicMock\nm = MagicMock()\nm.__len__.return_value = 42\nprint(len(m))`, output: `42` },
+        { title: "patch object", code: `from unittest.mock import patch\nimport json\nwith patch("json.dumps", return_value="mocked"):\n    print(json.dumps({"a": 1}))`, output: `mocked` },
+        { title: "patch as decorator", code: `from unittest.mock import patch, MagicMock\nimport json\n@patch("json.loads")\ndef test_parse(mock_loads):\n    mock_loads.return_value = {"ok": True}\n    print(json.loads("{}"))\n\ntest_parse()`, output: `{'ok': True}` },
+        { title: "Assert mock was called", code: `from unittest.mock import Mock\nm = Mock()\nm(1, 2, x=3)\nm.assert_called_with(1, 2, x=3)\nprint("called correctly")`, output: `called correctly` },
+        { title: "Mock side_effect", code: `from unittest.mock import Mock\nm = Mock(side_effect=[1, 2, 3])\nprint(m(), m(), m())`, output: `1 2 3` },
+        { title: "Mock side_effect raises", code: `from unittest.mock import Mock\nm = Mock(side_effect=ValueError("boom"))\ntry:\n    m()\nexcept ValueError as e:\n    print(e)`, output: `boom` },
+        { title: "unittest TestCase", code: `import unittest\nclass TestMath(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(2+3, 5)\n    def test_true(self):\n        self.assertTrue(1 < 2)\n\n# unittest.main()\nprint("TestCase defined")`, output: `TestCase defined` },
+        { title: "assertRaises", code: `import unittest\nclass T(unittest.TestCase):\n    def test_err(self):\n        with self.assertRaises(ZeroDivisionError):\n            1/0\n# T().test_err()\nprint("test defined")`, output: `test defined` },
+        { title: "setUp / tearDown", code: `import unittest\nclass T(unittest.TestCase):\n    def setUp(self):\n        self.data = [1, 2, 3]\n    def tearDown(self):\n        self.data = None\n    def test_it(self):\n        self.assertEqual(len(self.data), 3)\nprint("lifecycle hooks defined")`, output: `lifecycle hooks defined` },
+        { title: "Test tmp_path fixture", code: `# pytest gives tmp_path auto\ndef test_write(tmp_path):\n    p = tmp_path / "data.txt"\n    p.write_text("hello")\n    assert p.read_text() == "hello"\nprint("tmp_path pattern")`, output: `tmp_path pattern` },
+        { title: "Capture stdout", code: `# pytest gives capsys\ndef test_print(capsys):\n    print("hi")\n    captured = capsys.readouterr()\n    assert captured.out == "hi\\n"\nprint("capsys pattern")`, output: `capsys pattern` },
+        { title: "Parametrize with ids", code: `import pytest\n@pytest.mark.parametrize("val", [1, 2, 3], ids=["one","two","three"])\ndef test_pos(val):\n    assert val > 0`, output: `3 passed` },
+        { title: "monkeypatch env var", code: `# pytest fixture monkeypatch\ndef test_env(monkeypatch):\n    monkeypatch.setenv("KEY", "value")\n    import os\n    assert os.getenv("KEY") == "value"\nprint("env override pattern")`, output: `env override pattern` },
+        { title: "Approx float compare", code: `import pytest\nassert 0.1 + 0.2 == pytest.approx(0.3)\nprint("approx works")`, output: `approx works` },
+        { title: "Test coverage command", code: `# Run: pytest --cov=my_module tests/\n# See report of covered lines\nprint("coverage measured")`, output: `coverage measured` },
+        { title: "Test class grouping", code: `class TestUser:\n    def test_create(self):\n        assert True\n    def test_update(self):\n        assert True\nprint("class grouping")`, output: `class grouping` }
       ]
     }
   ]
@@ -985,6 +1251,38 @@ window.DP.registerModule({
       examples: [
         { title: "Singly linked list", code: `class Node:\n    def __init__(self, val):\n        self.val = val\n        self.next = None\n\na = Node(1); a.next = Node(2)\nprint(a.val, a.next.val)`, output: `1 2` },
         { title: "BST insert & inorder", code: `class Node:\n    def __init__(self, v):\n        self.v, self.left, self.right = v, None, None\n\ndef insert(root, v):\n    if not root: return Node(v)\n    if v < root.v: root.left = insert(root.left, v)\n    else: root.right = insert(root.right, v)\n    return root\n\ndef inorder(n):\n    if n:\n        inorder(n.left); print(n.v, end=" "); inorder(n.right)\n\nr = None\nfor x in [5, 3, 7, 1]:\n    r = insert(r, x)\ninorder(r)`, output: `1 3 5 7 ` }
+      ]
+    },
+    {
+      title: "Data Structures — Implementations",
+      badge: "DSA · 25+ examples",
+      notes: ["Practical implementations of common data structures from scratch."],
+      examples: [
+        { title: "Stack (LIFO)", code: `stack = []\nstack.append(1); stack.append(2); stack.append(3)\nprint(stack.pop())\nprint(stack.pop())`, output: `3\n2` },
+        { title: "Stack class", code: `class Stack:\n    def __init__(self): self._items = []\n    def push(self, x): self._items.append(x)\n    def pop(self): return self._items.pop() if self._items else None\n    def peek(self): return self._items[-1] if self._items else None\n    def is_empty(self): return len(self._items) == 0\n\ns = Stack(); s.push(1); s.push(2)\nprint(s.peek(), s.pop())`, output: `2 2` },
+        { title: "Queue with deque", code: `from collections import deque\nq = deque()\nq.append("A"); q.append("B"); q.append("C")\nprint(q.popleft())`, output: `A` },
+        { title: "Queue class", code: `from collections import deque\nclass Queue:\n    def __init__(self): self._q = deque()\n    def enqueue(self, x): self._q.append(x)\n    def dequeue(self): return self._q.popleft() if self._q else None\n    def size(self): return len(self._q)\n\nq = Queue(); q.enqueue(1); q.enqueue(2)\nprint(q.dequeue(), q.size())`, output: `1 1` },
+        { title: "Linked list node + traverse", code: `class Node:\n    def __init__(self, v): self.v = v; self.next = None\n\nhead = Node(1); head.next = Node(2); head.next.next = Node(3)\ncur = head\nwhile cur:\n    print(cur.v, end=" "); cur = cur.next`, output: `1 2 3 ` },
+        { title: "Linked list insert at head", code: `class Node:\n    def __init__(self, v): self.v = v; self.next = None\n\ndef prepend(head, v):\n    n = Node(v); n.next = head; return n\n\nh = None\nfor x in [3, 2, 1]:\n    h = prepend(h, x)\ncur = h\nwhile cur: print(cur.v, end=" "); cur = cur.next`, output: `1 2 3 ` },
+        { title: "Reverse linked list", code: `class Node:\n    def __init__(self, v): self.v = v; self.next = None\n\ndef reverse(head):\n    prev = None; cur = head\n    while cur:\n        nxt = cur.next; cur.next = prev\n        prev = cur; cur = nxt\n    return prev\n\nh = Node(1); h.next = Node(2); h.next.next = Node(3)\nr = reverse(h)\nwhile r: print(r.v, end=" "); r = r.next`, output: `3 2 1 ` },
+        { title: "Detect cycle in linked list", code: `class Node:\n    def __init__(self, v): self.v = v; self.next = None\n\ndef has_cycle(head):\n    slow = fast = head\n    while fast and fast.next:\n        slow = slow.next; fast = fast.next.next\n        if slow == fast: return True\n    return False\n\nh = Node(1); h.next = Node(2); h.next.next = h  # cycle!\nprint(has_cycle(h))`, output: `True` },
+        { title: "Binary tree", code: `class TreeNode:\n    def __init__(self, v):\n        self.v = v; self.left = None; self.right = None\n\nroot = TreeNode(1)\nroot.left = TreeNode(2); root.right = TreeNode(3)\nprint(root.v, root.left.v, root.right.v)`, output: `1 2 3` },
+        { title: "BST search", code: `class Node:\n    def __init__(self, v): self.v = v; self.l = self.r = None\n\ndef search(root, v):\n    if not root or root.v == v: return root\n    return search(root.l, v) if v < root.v else search(root.r, v)\n\nr = Node(5); r.l = Node(3); r.r = Node(7)\nprint(search(r, 3).v)`, output: `3` },
+        { title: "Tree preorder traversal", code: `class N:\n    def __init__(self, v): self.v = v; self.l = self.r = None\ndef preorder(n):\n    if n: print(n.v, end=" "); preorder(n.l); preorder(n.r)\n\nroot = N(1); root.l = N(2); root.r = N(3)\npreorder(root)`, output: `1 2 3 ` },
+        { title: "Tree postorder traversal", code: `class N:\n    def __init__(self, v): self.v = v; self.l = self.r = None\ndef postorder(n):\n    if n: postorder(n.l); postorder(n.r); print(n.v, end=" ")\n\nroot = N(1); root.l = N(2); root.r = N(3)\npostorder(root)`, output: `2 3 1 ` },
+        { title: "BFS on tree (level order)", code: `from collections import deque\nclass N:\n    def __init__(self, v): self.v = v; self.l = self.r = None\ndef bfs(root):\n    q = deque([root])\n    while q:\n        n = q.popleft(); print(n.v, end=" ")\n        if n.l: q.append(n.l)\n        if n.r: q.append(n.r)\n\nroot = N(1); root.l = N(2); root.r = N(3)\nroot.l.l = N(4); root.l.r = N(5)\nbfs(root)`, output: `1 2 3 4 5 ` },
+        { title: "Min heap with heapq", code: `import heapq\nh = []\nfor x in [3, 1, 4, 1, 5, 9, 2, 6]:\n    heapq.heappush(h, x)\nprint(heapq.heappop(h), heapq.heappop(h))`, output: `1 1` },
+        { title: "Max heap trick (negate)", code: `import heapq\nh = []\nfor x in [3, 1, 4, 1, 5]:\n    heapq.heappush(h, -x)\nprint(-heapq.heappop(h))`, output: `5` },
+        { title: "N largest / smallest", code: `import heapq\nnums = [3, 1, 4, 1, 5, 9, 2, 6]\nprint(heapq.nlargest(3, nums))\nprint(heapq.nsmallest(3, nums))`, output: `[9, 6, 5]\n[1, 1, 2]` },
+        { title: "Priority queue", code: `import heapq\npq = []\nheapq.heappush(pq, (2, "task-b"))\nheapq.heappush(pq, (1, "task-a"))\nheapq.heappush(pq, (3, "task-c"))\nprint(heapq.heappop(pq))`, output: `(1, 'task-a')` },
+        { title: "Hash table (dict)", code: `# Python dict IS a hash table\nphonebook = {}\nphonebook["Sara"] = "555-0100"\nphonebook["Ravi"] = "555-0101"\nprint(phonebook["Sara"])\nprint("Ravi" in phonebook)`, output: `555-0100\nTrue` },
+        { title: "Trie (prefix tree)", code: `class Trie:\n    def __init__(self): self.root = {}\n    def insert(self, word):\n        node = self.root\n        for c in word:\n            node = node.setdefault(c, {})\n        node["$"] = True\n    def search(self, word):\n        node = self.root\n        for c in word:\n            if c not in node: return False\n            node = node[c]\n        return "$" in node\n\nt = Trie(); t.insert("apple"); t.insert("app")\nprint(t.search("app"), t.search("apx"))`, output: `True False` },
+        { title: "Graph as adjacency list", code: `graph = {\n    "A": ["B", "C"],\n    "B": ["D"],\n    "C": ["D"],\n    "D": []\n}\nfor node, neighbors in graph.items():\n    print(f"{node} -> {neighbors}")`, output: `A -> ['B', 'C']\nB -> ['D']\nC -> ['D']\nD -> []` },
+        { title: "Graph DFS", code: `def dfs(graph, start, visited=None):\n    if visited is None: visited = set()\n    visited.add(start); print(start, end=" ")\n    for n in graph.get(start, []):\n        if n not in visited:\n            dfs(graph, n, visited)\n\ndfs({"A":["B","C"], "B":["D"], "C":["D"], "D":[]}, "A")`, output: `A B D C ` },
+        { title: "Graph BFS", code: `from collections import deque\ndef bfs(graph, start):\n    visited = {start}\n    q = deque([start])\n    while q:\n        node = q.popleft(); print(node, end=" ")\n        for n in graph.get(node, []):\n            if n not in visited:\n                visited.add(n); q.append(n)\n\nbfs({"A":["B","C"], "B":["D"], "C":["D"], "D":[]}, "A")`, output: `A B C D ` },
+        { title: "Circular queue with maxlen", code: `from collections import deque\nq = deque(maxlen=3)\nfor x in [1, 2, 3, 4, 5]:\n    q.append(x)\nprint(list(q))`, output: `[3, 4, 5]` },
+        { title: "Doubly linked list node", code: `class DNode:\n    def __init__(self, v):\n        self.v = v; self.prev = None; self.next = None\n\na = DNode(1); b = DNode(2)\na.next = b; b.prev = a\nprint(a.v, "->", a.next.v, "<-", a.next.prev.v)`, output: `1 -> 2 <- 1` },
+        { title: "Union-Find (Disjoint Set)", code: `class UF:\n    def __init__(self, n):\n        self.p = list(range(n))\n    def find(self, x):\n        if self.p[x] != x:\n            self.p[x] = self.find(self.p[x])\n        return self.p[x]\n    def union(self, x, y):\n        self.p[self.find(x)] = self.find(y)\n\nu = UF(5)\nu.union(0, 1); u.union(2, 3); u.union(1, 3)\nprint(u.find(0) == u.find(3))`, output: `True` }
       ]
     }
   ]
@@ -1024,6 +1322,43 @@ window.DP.registerModule({
         { title: "Fibonacci with memoization (DP)", code: `from functools import lru_cache\n\n@lru_cache(maxsize=None)\ndef fib(n):\n    return n if n < 2 else fib(n - 1) + fib(n - 2)\n\nprint(fib(30))`, output: `832040` },
         { title: "Coin change (greedy)", code: `def coins(amount, denoms=[10, 5, 2, 1]):\n    result = []\n    for d in denoms:\n        while amount >= d:\n            amount -= d\n            result.append(d)\n    return result\n\nprint(coins(28))`, output: `[10, 10, 5, 2, 1]` }
       ]
+    },
+    {
+      title: "Algorithms — Practical",
+      badge: "Algorithms · 30+ examples",
+      notes: ["Common algorithms every developer should know."],
+      examples: [
+        { title: "Linear search", code: `def linear_search(arr, target):\n    for i, v in enumerate(arr):\n        if v == target: return i\n    return -1\n\nprint(linear_search([3, 7, 1, 9, 4], 9))`, output: `3` },
+        { title: "Binary search iterative", code: `def bsearch(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target: return mid\n        elif arr[mid] < target: lo = mid + 1\n        else: hi = mid - 1\n    return -1\n\nprint(bsearch([1, 3, 5, 7, 9, 11], 7))`, output: `3` },
+        { title: "Binary search recursive", code: `def bsearch(arr, t, lo=0, hi=None):\n    if hi is None: hi = len(arr) - 1\n    if lo > hi: return -1\n    mid = (lo + hi) // 2\n    if arr[mid] == t: return mid\n    if arr[mid] < t: return bsearch(arr, t, mid+1, hi)\n    return bsearch(arr, t, lo, mid-1)\n\nprint(bsearch([1,3,5,7,9], 5))`, output: `2` },
+        { title: "Bubble sort", code: `def bubble(arr):\n    n = len(arr)\n    for i in range(n):\n        for j in range(n-i-1):\n            if arr[j] > arr[j+1]:\n                arr[j], arr[j+1] = arr[j+1], arr[j]\n    return arr\n\nprint(bubble([5, 2, 8, 1, 9]))`, output: `[1, 2, 5, 8, 9]` },
+        { title: "Selection sort", code: `def selection(arr):\n    n = len(arr)\n    for i in range(n):\n        m = i\n        for j in range(i+1, n):\n            if arr[j] < arr[m]: m = j\n        arr[i], arr[m] = arr[m], arr[i]\n    return arr\n\nprint(selection([64, 25, 12, 22, 11]))`, output: `[11, 12, 22, 25, 64]` },
+        { title: "Insertion sort", code: `def insertion(arr):\n    for i in range(1, len(arr)):\n        key, j = arr[i], i-1\n        while j >= 0 and arr[j] > key:\n            arr[j+1] = arr[j]; j -= 1\n        arr[j+1] = key\n    return arr\n\nprint(insertion([5, 2, 4, 6, 1, 3]))`, output: `[1, 2, 3, 4, 5, 6]` },
+        { title: "Merge sort", code: `def merge_sort(arr):\n    if len(arr) <= 1: return arr\n    mid = len(arr) // 2\n    L = merge_sort(arr[:mid])\n    R = merge_sort(arr[mid:])\n    out, i, j = [], 0, 0\n    while i < len(L) and j < len(R):\n        if L[i] <= R[j]: out.append(L[i]); i += 1\n        else: out.append(R[j]); j += 1\n    return out + L[i:] + R[j:]\n\nprint(merge_sort([38, 27, 43, 3, 9, 82, 10]))`, output: `[3, 9, 10, 27, 38, 43, 82]` },
+        { title: "Quick sort", code: `def quick(arr):\n    if len(arr) <= 1: return arr\n    pivot = arr[0]\n    less = [x for x in arr[1:] if x <= pivot]\n    more = [x for x in arr[1:] if x > pivot]\n    return quick(less) + [pivot] + quick(more)\n\nprint(quick([3, 6, 8, 10, 1, 2, 1]))`, output: `[1, 1, 2, 3, 6, 8, 10]` },
+        { title: "Fibonacci recursive (slow)", code: `def fib(n):\n    return n if n < 2 else fib(n-1) + fib(n-2)\n\nprint([fib(i) for i in range(10)])`, output: `[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]` },
+        { title: "Fibonacci memoized DP", code: `from functools import lru_cache\n@lru_cache\ndef fib(n):\n    return n if n < 2 else fib(n-1) + fib(n-2)\n\nprint(fib(50))`, output: `12586269025` },
+        { title: "Fibonacci iterative O(1) space", code: `def fib(n):\n    a, b = 0, 1\n    for _ in range(n): a, b = b, a + b\n    return a\n\nprint(fib(10))`, output: `55` },
+        { title: "Factorial iterative", code: `def factorial(n):\n    r = 1\n    for i in range(2, n+1): r *= i\n    return r\n\nprint(factorial(10))`, output: `3628800` },
+        { title: "Power (fast exponentiation)", code: `def power(base, exp):\n    if exp == 0: return 1\n    half = power(base, exp // 2)\n    return half * half * (base if exp % 2 else 1)\n\nprint(power(2, 20))`, output: `1048576` },
+        { title: "GCD (Euclidean)", code: `def gcd(a, b):\n    while b: a, b = b, a % b\n    return a\n\nprint(gcd(48, 36))\nprint(gcd(100, 75))`, output: `12\n25` },
+        { title: "LCM", code: `def gcd(a, b):\n    while b: a, b = b, a % b\n    return a\ndef lcm(a, b): return a * b // gcd(a, b)\n\nprint(lcm(12, 18))`, output: `36` },
+        { title: "Prime check", code: `def is_prime(n):\n    if n < 2: return False\n    for i in range(2, int(n**0.5)+1):\n        if n % i == 0: return False\n    return True\n\nprint([n for n in range(2, 20) if is_prime(n)])`, output: `[2, 3, 5, 7, 11, 13, 17, 19]` },
+        { title: "Sieve of Eratosthenes", code: `def primes(n):\n    sieve = [True] * (n + 1)\n    sieve[0] = sieve[1] = False\n    for i in range(2, int(n**0.5)+1):\n        if sieve[i]:\n            for j in range(i*i, n+1, i):\n                sieve[j] = False\n    return [i for i, p in enumerate(sieve) if p]\n\nprint(primes(30))`, output: `[2, 3, 5, 7, 11, 13, 17, 19, 23, 29]` },
+        { title: "Reverse a number", code: `def reverse(n):\n    r = 0\n    while n > 0:\n        r = r * 10 + n % 10\n        n //= 10\n    return r\n\nprint(reverse(12345))`, output: `54321` },
+        { title: "Palindrome number", code: `def is_pal(n):\n    r = 0; orig = n\n    while n > 0:\n        r = r * 10 + n % 10\n        n //= 10\n    return orig == r\n\nprint(is_pal(121), is_pal(123))`, output: `True False` },
+        { title: "Two Sum (hash map)", code: `def two_sum(nums, target):\n    seen = {}\n    for i, n in enumerate(nums):\n        if target - n in seen:\n            return [seen[target - n], i]\n        seen[n] = i\n    return []\n\nprint(two_sum([2, 7, 11, 15], 9))`, output: `[0, 1]` },
+        { title: "Max subarray (Kadane's)", code: `def max_sub(nums):\n    cur = best = nums[0]\n    for n in nums[1:]:\n        cur = max(n, cur + n)\n        best = max(best, cur)\n    return best\n\nprint(max_sub([-2, 1, -3, 4, -1, 2, 1, -5, 4]))`, output: `6` },
+        { title: "Longest common subsequence", code: `def lcs(a, b):\n    m, n = len(a), len(b)\n    dp = [[0]*(n+1) for _ in range(m+1)]\n    for i in range(1, m+1):\n        for j in range(1, n+1):\n            dp[i][j] = dp[i-1][j-1] + 1 if a[i-1] == b[j-1] else max(dp[i-1][j], dp[i][j-1])\n    return dp[m][n]\n\nprint(lcs("abcde", "ace"))`, output: `3` },
+        { title: "Knapsack 0/1", code: `def knapsack(weights, values, W):\n    n = len(weights)\n    dp = [[0]*(W+1) for _ in range(n+1)]\n    for i in range(1, n+1):\n        for w in range(W+1):\n            dp[i][w] = dp[i-1][w]\n            if weights[i-1] <= w:\n                dp[i][w] = max(dp[i][w], dp[i-1][w-weights[i-1]] + values[i-1])\n    return dp[n][W]\n\nprint(knapsack([1,3,4,5], [1,4,5,7], 7))`, output: `9` },
+        { title: "Backtracking — N Queens count", code: `def n_queens(n):\n    def solve(row, cols, d1, d2):\n        if row == n: return 1\n        count = 0\n        for c in range(n):\n            if c in cols or (row-c) in d1 or (row+c) in d2: continue\n            count += solve(row+1, cols|{c}, d1|{row-c}, d2|{row+c})\n        return count\n    return solve(0, set(), set(), set())\n\nprint(n_queens(4))`, output: `2` },
+        { title: "Permutations backtracking", code: `def perms(arr):\n    if len(arr) <= 1: return [arr]\n    out = []\n    for i, x in enumerate(arr):\n        for p in perms(arr[:i] + arr[i+1:]):\n            out.append([x] + p)\n    return out\n\nprint(perms([1, 2, 3]))`, output: `[[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]` },
+        { title: "Combinations backtracking", code: `def combos(arr, k):\n    if k == 0: return [[]]\n    if not arr: return []\n    with_first = [[arr[0]] + c for c in combos(arr[1:], k-1)]\n    without = combos(arr[1:], k)\n    return with_first + without\n\nprint(combos([1,2,3,4], 2))`, output: `[[1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]]` },
+        { title: "Activity selection (greedy)", code: `def activities(times):\n    times.sort(key=lambda x: x[1])\n    count = 0; last_end = -1\n    for s, e in times:\n        if s >= last_end:\n            count += 1; last_end = e\n    return count\n\nprint(activities([(1,3),(2,5),(3,8),(6,9)]))`, output: `2` },
+        { title: "Balanced parentheses check", code: `def balanced(s):\n    stack = []; pairs = {')':'(', ']':'[', '}':'{'}\n    for c in s:\n        if c in "([{": stack.append(c)\n        elif c in pairs:\n            if not stack or stack.pop() != pairs[c]: return False\n    return not stack\n\nprint(balanced("({[]})"), balanced("(]"))`, output: `True False` },
+        { title: "Anagram check", code: `def anagram(a, b):\n    return sorted(a) == sorted(b)\n\nprint(anagram("listen", "silent"))\nprint(anagram("hello", "world"))`, output: `True\nFalse` },
+        { title: "Longest common prefix", code: `def lcp(words):\n    if not words: return ""\n    p = words[0]\n    for w in words[1:]:\n        while not w.startswith(p):\n            p = p[:-1]\n            if not p: return ""\n    return p\n\nprint(lcp(["flower", "flow", "flight"]))`, output: `fl` }
+      ]
     }
   ]
 });
@@ -1051,6 +1386,33 @@ window.DP.registerModule({
       examples: [
         { title: "Strategy", code: `def add(a, b): return a + b\ndef mul(a, b): return a * b\n\ndef calculate(strategy, a, b):\n    return strategy(a, b)\n\nprint(calculate(add, 3, 4))\nprint(calculate(mul, 3, 4))`, output: `7\n12` },
         { title: "Observer", code: `class Subject:\n    def __init__(self):\n        self.observers = []\n    def subscribe(self, fn):\n        self.observers.append(fn)\n    def notify(self, msg):\n        for fn in self.observers:\n            fn(msg)\n\ns = Subject()\ns.subscribe(lambda m: print("got:", m))\ns.notify("update!")`, output: `got: update!` }
+      ]
+    },
+    {
+      title: "Design Patterns — Practical",
+      badge: "Patterns · 20+ examples",
+      notes: ["Classic OOP design patterns implemented in Python."],
+      examples: [
+        { title: "Singleton via metaclass", code: `class Singleton(type):\n    _instances = {}\n    def __call__(cls, *a, **kw):\n        if cls not in cls._instances:\n            cls._instances[cls] = super().__call__(*a, **kw)\n        return cls._instances[cls]\n\nclass Config(metaclass=Singleton):\n    def __init__(self): self.debug = True\n\nprint(Config() is Config())`, output: `True` },
+        { title: "Factory Method", code: `class Animal:\n    def sound(self): pass\nclass Dog(Animal):\n    def sound(self): return "woof"\nclass Cat(Animal):\n    def sound(self): return "meow"\n\nclass AnimalFactory:\n    @staticmethod\n    def create(kind):\n        return {"dog": Dog, "cat": Cat}[kind]()\n\nprint(AnimalFactory.create("dog").sound())`, output: `woof` },
+        { title: "Abstract Factory", code: `class WinButton:\n    def click(self): return "win click"\nclass MacButton:\n    def click(self): return "mac click"\n\nclass WinFactory:\n    def button(self): return WinButton()\nclass MacFactory:\n    def button(self): return MacButton()\n\nfactories = {"win": WinFactory(), "mac": MacFactory()}\nprint(factories["win"].button().click())`, output: `win click` },
+        { title: "Builder", code: `class Pizza:\n    def __init__(self):\n        self.toppings = []\n    def __str__(self): return f"Pizza({', '.join(self.toppings)})"\n\nclass PizzaBuilder:\n    def __init__(self): self.pizza = Pizza()\n    def add(self, t): self.pizza.toppings.append(t); return self\n    def build(self): return self.pizza\n\np = PizzaBuilder().add("cheese").add("mushroom").add("basil").build()\nprint(p)`, output: `Pizza(cheese, mushroom, basil)` },
+        { title: "Prototype (clone)", code: `import copy\nclass Shape:\n    def __init__(self, sides): self.sides = sides\n\norig = Shape([1, 2, 3])\nclone = copy.deepcopy(orig)\nclone.sides.append(4)\nprint(orig.sides, clone.sides)`, output: `[1, 2, 3] [1, 2, 3, 4]` },
+        { title: "Adapter (wrapping incompatible interface)", code: `class OldPrinter:\n    def print_old(self, text): return f"Old: {text}"\n\nclass NewPrinter:\n    def print(self, text): return f"New: {text}"\n\nclass PrinterAdapter:\n    def __init__(self, old): self.old = old\n    def print(self, text): return self.old.print_old(text)\n\np = PrinterAdapter(OldPrinter())\nprint(p.print("hello"))`, output: `Old: hello` },
+        { title: "Decorator (wrapping behavior)", code: `class Text:\n    def __init__(self, s): self.s = s\n    def render(self): return self.s\n\nclass BoldText:\n    def __init__(self, wrapped): self.wrapped = wrapped\n    def render(self): return f"<b>{self.wrapped.render()}</b>"\n\nprint(BoldText(Text("hello")).render())`, output: `<b>hello</b>` },
+        { title: "Facade (simplify complex subsystem)", code: `class CPU:\n    def start(self): return "CPU on"\nclass Memory:\n    def load(self): return "memory ready"\nclass Disk:\n    def read(self): return "disk read"\n\nclass Computer:\n    def __init__(self):\n        self.cpu, self.mem, self.disk = CPU(), Memory(), Disk()\n    def start(self):\n        return [self.cpu.start(), self.mem.load(), self.disk.read()]\n\nfor s in Computer().start(): print(s)`, output: `CPU on\nmemory ready\ndisk read` },
+        { title: "Proxy (lazy loading)", code: `class RealImage:\n    def __init__(self, path):\n        print(f"loading {path}")\n        self.path = path\n    def display(self): return f"showing {self.path}"\n\nclass ImageProxy:\n    def __init__(self, path):\n        self.path = path; self._real = None\n    def display(self):\n        if self._real is None: self._real = RealImage(self.path)\n        return self._real.display()\n\np = ImageProxy("cat.jpg")\nprint("no load yet")\nprint(p.display())`, output: `no load yet\nloading cat.jpg\nshowing cat.jpg` },
+        { title: "Composite (tree of components)", code: `class File:\n    def __init__(self, name, size): self.name, self.size = name, size\n    def total_size(self): return self.size\n\nclass Folder:\n    def __init__(self, name): self.name = name; self.children = []\n    def add(self, c): self.children.append(c)\n    def total_size(self):\n        return sum(c.total_size() for c in self.children)\n\nf = Folder("root"); f.add(File("a.txt", 100)); f.add(File("b.txt", 200))\nprint(f.total_size())`, output: `300` },
+        { title: "Chain of Responsibility", code: `class Handler:\n    def __init__(self, level, nxt=None):\n        self.level, self.next = level, nxt\n    def handle(self, msg, lvl):\n        if lvl <= self.level:\n            print(f"Level {self.level}: {msg}")\n        elif self.next:\n            self.next.handle(msg, lvl)\n\nchain = Handler(1, Handler(2, Handler(3)))\nchain.handle("error", 2)`, output: `Level 2: error` },
+        { title: "Command", code: `class Light:\n    def on(self): return "light on"\n    def off(self): return "light off"\n\nclass Command:\n    def __init__(self, receiver, action):\n        self.receiver, self.action = receiver, action\n    def execute(self): return getattr(self.receiver, self.action)()\n\nlight = Light()\non_cmd = Command(light, "on")\nprint(on_cmd.execute())`, output: `light on` },
+        { title: "State", code: `class State:\n    def handle(self, ctx): pass\nclass StartState(State):\n    def handle(self, ctx):\n        ctx.state = StopState(); return "starting"\nclass StopState(State):\n    def handle(self, ctx):\n        ctx.state = StartState(); return "stopping"\n\nclass Ctx:\n    def __init__(self): self.state = StartState()\n\nc = Ctx()\nprint(c.state.handle(c))\nprint(c.state.handle(c))`, output: `starting\nstopping` },
+        { title: "Strategy", code: `def add_strategy(a, b): return a + b\ndef mul_strategy(a, b): return a * b\n\nclass Calculator:\n    def __init__(self, strategy):\n        self.strategy = strategy\n    def compute(self, a, b):\n        return self.strategy(a, b)\n\nprint(Calculator(add_strategy).compute(3, 4))\nprint(Calculator(mul_strategy).compute(3, 4))`, output: `7\n12` },
+        { title: "Template Method", code: `class Report:\n    def generate(self):\n        return [self.title(), self.body(), self.footer()]\n    def title(self): return "Report"\n    def body(self): raise NotImplementedError\n    def footer(self): return "-- end --"\n\nclass SalesReport(Report):\n    def body(self): return "Sales data..."\n\nprint(SalesReport().generate())`, output: `['Report', 'Sales data...', '-- end --']` },
+        { title: "Iterator (custom)", code: `class Counter:\n    def __init__(self, limit):\n        self.limit, self.i = limit, 0\n    def __iter__(self): return self\n    def __next__(self):\n        if self.i >= self.limit: raise StopIteration\n        self.i += 1\n        return self.i\n\nprint(list(Counter(3)))`, output: `[1, 2, 3]` },
+        { title: "Mediator (chat room)", code: `class ChatRoom:\n    def __init__(self): self.users = []\n    def register(self, u): self.users.append(u); u.room = self\n    def broadcast(self, sender, msg):\n        for u in self.users:\n            if u != sender: u.receive(sender.name, msg)\n\nclass User:\n    def __init__(self, name): self.name = name; self.room = None\n    def send(self, msg): self.room.broadcast(self, msg)\n    def receive(self, sender, msg): print(f"{self.name}: [{sender}] {msg}")\n\nroom = ChatRoom()\na, b = User("A"), User("B")\nroom.register(a); room.register(b)\na.send("hi")`, output: `B: [A] hi` },
+        { title: "Repository pattern", code: `class UserRepo:\n    def __init__(self): self.users = {}\n    def add(self, u): self.users[u["id"]] = u\n    def get(self, uid): return self.users.get(uid)\n    def list_all(self): return list(self.users.values())\n\nrepo = UserRepo()\nrepo.add({"id": 1, "name": "Sara"})\nprint(repo.get(1))`, output: `{'id': 1, 'name': 'Sara'}` },
+        { title: "Dependency Injection", code: `class EmailService:\n    def send(self, msg): return f"email sent: {msg}"\n\nclass Notifier:\n    def __init__(self, service):  # DI!\n        self.service = service\n    def notify(self, msg): return self.service.send(msg)\n\n# Inject the dependency\nn = Notifier(EmailService())\nprint(n.notify("hello"))`, output: `email sent: hello` },
+        { title: "MVC (Model-View-Controller)", code: `class Model:\n    def __init__(self): self.data = "initial"\nclass View:\n    def render(self, data): return f"Display: {data}"\nclass Controller:\n    def __init__(self, m, v): self.m, self.v = m, v\n    def update(self, d): self.m.data = d\n    def show(self): return self.v.render(self.m.data)\n\nc = Controller(Model(), View())\nc.update("hello world")\nprint(c.show())`, output: `Display: hello world` }
       ]
     }
   ]

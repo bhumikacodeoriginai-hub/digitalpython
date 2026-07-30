@@ -2763,40 +2763,61 @@
       }
     }
 
-    /* 1. Any anchor inside the sidebar closes the drawer */
+    /* 1. Inject a REAL close button (× ) at the top of the sidebar.
+          Real DOM element = reliable click handler on every device. */
+    (function injectSidebarCloseButton() {
+      var sidebar = document.querySelector(".sidebar");
+      if (!sidebar || sidebar.querySelector(".sidebar-close-btn")) return;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "sidebar-close-btn";
+      btn.setAttribute("aria-label", "Close menu");
+      btn.setAttribute("title", "Close menu");
+      btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileNav();
+      });
+      /* Also handle touchend explicitly for iOS reliability */
+      btn.addEventListener("touchend", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMobileNav();
+      }, { passive: false });
+      sidebar.insertBefore(btn, sidebar.firstChild);
+    })();
+
+    /* 2. BULLETPROOF auto-close: any hashchange while on mobile → close.
+          Sidebar links change the hash → drawer closes automatically.
+          Works even if the click event is stopped upstream. */
+    window.addEventListener("hashchange", function () {
+      /* Use rAF so the router renders first, then we close */
+      requestAnimationFrame(function () {
+        requestAnimationFrame(closeMobileNav);
+      });
+    });
+
+    /* 3. Belt-and-suspenders: also close on link click via delegation */
     document.addEventListener("click", function (e) {
       var target = e.target;
       if (!target) return;
-      var link = target.closest && target.closest(".sidebar a");
+      var link = target.closest && target.closest(".sidebar a[href^='#']");
       if (link) {
-        /* Give the router a moment to run first, then close */
-        setTimeout(closeMobileNav, 60);
+        setTimeout(closeMobileNav, 80);
       }
     }, true);
 
-    /* 2. Detect click on the ::before pseudo close button
-          (pseudo-elements aren't real event targets, so we listen
-           on the sidebar and check click coordinates fall in the
-           top-right × zone) */
-    (function attachSidebarCloseX() {
-      var sidebar = document.querySelector(".sidebar");
-      if (!sidebar) return;
-      sidebar.addEventListener("click", function (e) {
-        if (!isMobile() || !document.body.classList.contains("nav-open")) return;
-        var rect = sidebar.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var y = e.clientY - rect.top;
-        /* × is ~34x34, positioned at top-right with 6-8px margin.
-           Zone: right edge to right-44, top 6 to 44. */
-        if (x >= rect.width - 46 && x <= rect.width - 4 && y >= 4 && y <= 46) {
-          closeMobileNav();
-          e.preventDefault(); e.stopPropagation();
-        }
-      });
-    })();
-
-    /* 3. Close drawer on hashchange */
-    window.addEventListener("hashchange", function () { setTimeout(closeMobileNav, 30); });
+    /* 4. Also close on touchstart to handle iOS Safari tap events
+          that sometimes don't fire click on nested elements */
+    document.addEventListener("touchend", function (e) {
+      var target = e.target;
+      if (!target) return;
+      var link = target.closest && target.closest(".sidebar a[href^='#']");
+      if (link) {
+        setTimeout(closeMobileNav, 80);
+      }
+    }, { passive: true });
 
     /* 4. Close on ESC */
     document.addEventListener("keydown", function (e) {

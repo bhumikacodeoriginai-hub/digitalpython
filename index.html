@@ -57,7 +57,10 @@
 
   <div class="layout">
     <!-- ============ SIDEBAR ============ -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Navigation drawer">
+      <button type="button" class="sidebar-close-btn" id="sidebarClose" aria-label="Close navigation menu" title="Close menu">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+      </button>
       <div class="sidebar-inner">
         <a class="ws-link" id="wsLink" href="#/workspace"><span class="ws-ico">▶</span>Workspace</a>
         <a class="ws-link ai-link" id="aiLink" href="#/ai-explain"><span class="ws-ico">🤖</span>AI Explain</a>

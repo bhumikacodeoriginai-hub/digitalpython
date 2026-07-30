@@ -2745,110 +2745,137 @@
     document.addEventListener("click", function (e) { if (!e.target.closest(".search-wrap")) $("#searchResults").hidden = true; });
     document.addEventListener("keydown", function (e) { if (e.key === "/" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); input.focus(); } });
 
-    $("#menuToggle").addEventListener("click", function () { document.body.classList.toggle("nav-open"); });
-    $("#scrim").addEventListener("click", function () { document.body.classList.remove("nav-open"); });
-
     /* ============================================================
-       Mobile drawer control — bulletproof
+       MOBILE DRAWER — DEFINITIVE IMPLEMENTATION
+       Single source of truth: body.nav-open.
+       Close button is in HTML (index.html), not injected.
        ============================================================ */
-    function isMobile() { return window.innerWidth <= 980; }
-    function closeMobileNav() {
-      if (isMobile() && document.body.classList.contains("nav-open")) {
-        document.body.classList.remove("nav-open");
-      }
-    }
-    function openMobileNav() {
-      if (isMobile() && !document.body.classList.contains("nav-open")) {
-        document.body.classList.add("nav-open");
-      }
-    }
-
-    /* 1. Inject a REAL close button (× ) at the top of the sidebar.
-          Real DOM element = reliable click handler on every device. */
-    (function injectSidebarCloseButton() {
+    (function drawerController() {
+      var MOBILE_MAX = 980;
+      var body = document.body;
       var sidebar = document.querySelector(".sidebar");
-      if (!sidebar || sidebar.querySelector(".sidebar-close-btn")) return;
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "sidebar-close-btn";
-      btn.setAttribute("aria-label", "Close menu");
-      btn.setAttribute("title", "Close menu");
-      btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
-      btn.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeMobileNav();
-      });
-      /* Also handle touchend explicitly for iOS reliability */
-      btn.addEventListener("touchend", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeMobileNav();
-      }, { passive: false });
-      sidebar.insertBefore(btn, sidebar.firstChild);
-    })();
+      var scrim = document.querySelector(".scrim");
+      var menuBtn = document.querySelector("#menuToggle");
+      var closeBtn = document.querySelector("#sidebarClose");
+      var scrollY = 0;
+      var isOpen = false;
 
-    /* 2. BULLETPROOF auto-close: any hashchange while on mobile → close.
-          Sidebar links change the hash → drawer closes automatically.
-          Works even if the click event is stopped upstream. */
-    window.addEventListener("hashchange", function () {
-      /* Use rAF so the router renders first, then we close */
-      requestAnimationFrame(function () {
-        requestAnimationFrame(closeMobileNav);
-      });
-    });
+      function isMobile() { return window.innerWidth <= MOBILE_MAX; }
 
-    /* 3. Belt-and-suspenders: also close on link click via delegation */
-    document.addEventListener("click", function (e) {
-      var target = e.target;
-      if (!target) return;
-      var link = target.closest && target.closest(".sidebar a[href^='#']");
-      if (link) {
-        setTimeout(closeMobileNav, 80);
+      function lockBody() {
+        scrollY = window.scrollY || window.pageYOffset || 0;
+        body.style.top = "-" + scrollY + "px";
+        body.classList.add("nav-open");
+        if (menuBtn) menuBtn.setAttribute("aria-expanded", "true");
+        if (sidebar) sidebar.setAttribute("aria-hidden", "false");
+        if (scrim) scrim.setAttribute("aria-hidden", "false");
       }
-    }, true);
-
-    /* 4. Also close on touchstart to handle iOS Safari tap events
-          that sometimes don't fire click on nested elements */
-    document.addEventListener("touchend", function (e) {
-      var target = e.target;
-      if (!target) return;
-      var link = target.closest && target.closest(".sidebar a[href^='#']");
-      if (link) {
-        setTimeout(closeMobileNav, 80);
+      function unlockBody() {
+        body.classList.remove("nav-open");
+        var y = parseInt(body.style.top || "0", 10) * -1;
+        body.style.top = "";
+        window.scrollTo(0, y || scrollY || 0);
+        if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+        if (sidebar) sidebar.setAttribute("aria-hidden", isMobile() ? "true" : "false");
+        if (scrim) scrim.setAttribute("aria-hidden", "true");
       }
-    }, { passive: true });
+      function open() {
+        if (!isMobile() || isOpen) return;
+        isOpen = true; lockBody();
+        setTimeout(function () { if (closeBtn) closeBtn.focus(); }, 250);
+      }
+      function close() {
+        if (!isOpen && !body.classList.contains("nav-open")) return;
+        isOpen = false; unlockBody();
+        if (menuBtn) menuBtn.focus();
+      }
+      function toggle() { isOpen ? close() : open(); }
 
-    /* 4. Close on ESC */
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && document.body.classList.contains("nav-open")) closeMobileNav();
-    });
+      /* Init state */
+      unlockBody();
 
-    /* 5. Close on resize to desktop (drawer state doesn't make sense >980) */
-    window.addEventListener("resize", function () {
-      if (!isMobile()) document.body.classList.remove("nav-open");
-    }, { passive: true });
-
-    /* 6. Swipe-to-close: gesture on the sidebar itself */
-    (function swipeToClose() {
-      var sidebar = document.querySelector(".sidebar");
-      if (!sidebar) return;
-      var startX = 0, currentX = 0, tracking = false;
-      sidebar.addEventListener("touchstart", function (e) {
-        if (!isMobile() || !document.body.classList.contains("nav-open")) return;
-        startX = e.touches[0].clientX; currentX = startX; tracking = true;
-      }, { passive: true });
-      sidebar.addEventListener("touchmove", function (e) {
-        if (!tracking) return;
-        currentX = e.touches[0].clientX;
-      }, { passive: true });
-      sidebar.addEventListener("touchend", function () {
-        if (!tracking) return;
-        tracking = false;
-        var dx = currentX - startX;
-        /* Swipe left by more than 60px → close */
-        if (dx < -60) closeMobileNav();
+      /* --- 1. Hamburger button --- */
+      if (menuBtn) menuBtn.addEventListener("click", function (e) {
+        e.preventDefault(); e.stopPropagation();
+        toggle();
       });
+
+      /* --- 2. Dedicated close (X) button in HTML --- */
+      if (closeBtn) {
+        closeBtn.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          close();
+        });
+        closeBtn.addEventListener("touchend", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          close();
+        }, { passive: false });
+      }
+
+      /* --- 3. Backdrop (scrim) click closes --- */
+      if (scrim) {
+        scrim.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          close();
+        });
+        scrim.addEventListener("touchend", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          close();
+        }, { passive: false });
+      }
+
+      /* --- 4. Any sidebar link tap → close (uses delegation + hashchange) --- */
+      /* hashchange fires on all sidebar link clicks since they use href="#/..." */
+      window.addEventListener("hashchange", function () {
+        if (body.classList.contains("nav-open") && isMobile()) {
+          /* Small delay so the router renders the new page first */
+          setTimeout(close, 30);
+        }
+      });
+
+      /* --- 5. Belt: click delegation on sidebar anchors --- */
+      if (sidebar) {
+        sidebar.addEventListener("click", function (e) {
+          var link = e.target && e.target.closest && e.target.closest("a[href^='#']");
+          if (link && !link.classList.contains("sidebar-close-btn")) {
+            /* Give the router a beat, then close */
+            setTimeout(close, 30);
+          }
+        });
+      }
+
+      /* --- 6. Escape key --- */
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && body.classList.contains("nav-open")) close();
+      });
+
+      /* --- 7. Resize: if we leave mobile viewport, force close & unlock --- */
+      window.addEventListener("resize", function () {
+        if (!isMobile() && body.classList.contains("nav-open")) close();
+      }, { passive: true });
+
+      /* --- 8. Swipe left inside drawer to close --- */
+      if (sidebar) {
+        var sx = 0, cx = 0, tracking = false;
+        sidebar.addEventListener("touchstart", function (e) {
+          if (!isOpen) return;
+          sx = e.touches[0].clientX; cx = sx; tracking = true;
+        }, { passive: true });
+        sidebar.addEventListener("touchmove", function (e) {
+          if (tracking) cx = e.touches[0].clientX;
+        }, { passive: true });
+        sidebar.addEventListener("touchend", function () {
+          if (tracking && (cx - sx) < -60) close();
+          tracking = false;
+        });
+      }
+
+      /* --- 9. Public API on window.DP for other code to close/open --- */
+      if (window.DP) {
+        window.DP.openNav = open;
+        window.DP.closeNav = close;
+        window.DP.toggleNav = toggle;
+      }
     })();
 
     window.addEventListener("hashchange", route);

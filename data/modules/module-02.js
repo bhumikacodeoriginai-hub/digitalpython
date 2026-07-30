@@ -277,6 +277,51 @@ window.DP.registerModule({
         { title: "Set as filter for uniqueness", code: `emails = ["a@b.com", "c@d.com", "a@b.com"]\nunique = list(set(emails))\nprint(len(unique))`, output: `2` },
         { title: "Set comprehension", code: `s = {x % 5 for x in range(20)}\nprint(sorted(s))`, output: `[0, 1, 2, 3, 4]` }
       ]
+    },
+    {
+      title: "Data Types — Real-World Practice",
+      badge: "Practical · 35+ examples",
+      notes: ["Real problems solved with the right data type. Mix of string, list, dict, set."],
+      examples: [
+        { title: "Reverse each word in sentence", code: `s = "Python is fun"\nprint(" ".join(w[::-1] for w in s.split()))`, output: `nohtyP si nuf` },
+        { title: "Count each character", code: `from collections import Counter\nprint(dict(Counter("mississippi")))`, output: `{'m': 1, 'i': 4, 's': 4, 'p': 2}` },
+        { title: "Find most common char", code: `from collections import Counter\nprint(Counter("banana").most_common(1))`, output: `[('a', 3)]` },
+        { title: "Check anagram", code: `def anagram(a, b):\n    return sorted(a) == sorted(b)\nprint(anagram("listen","silent"))`, output: `True` },
+        { title: "Longest word in sentence", code: `s = "Python is really awesome"\nprint(max(s.split(), key=len))`, output: `awesome` },
+        { title: "Remove duplicates keep order", code: `a = [1, 3, 2, 3, 1, 4]\nprint(list(dict.fromkeys(a)))`, output: `[1, 3, 2, 4]` },
+        { title: "Sum only positive", code: `nums = [10, -3, 5, -8, 20]\nprint(sum(n for n in nums if n > 0))`, output: `35` },
+        { title: "Find missing number 1..N", code: `a = [1, 2, 4, 5]; n = 5\nprint(n*(n+1)//2 - sum(a))`, output: `3` },
+        { title: "Two-sum with dict", code: `def two_sum(a, t):\n    seen = {}\n    for i, x in enumerate(a):\n        if t-x in seen: return [seen[t-x], i]\n        seen[x] = i\nprint(two_sum([2,7,11,15], 9))`, output: `[0, 1]` },
+        { title: "Word frequency in text", code: `from collections import Counter\ntext = "the cat the dog the"\nprint(Counter(text.split()).most_common(2))`, output: `[('the', 3), ('cat', 1)]` },
+        { title: "Group by first letter", code: `from collections import defaultdict\nnames = ["Alice", "Bob", "Anna", "Ben"]\ng = defaultdict(list)\nfor n in names: g[n[0]].append(n)\nprint(dict(g))`, output: `{'A': ['Alice', 'Anna'], 'B': ['Bob', 'Ben']}` },
+        { title: "Merge two dicts", code: `a = {"x": 1}\nb = {"y": 2}\nprint({**a, **b})`, output: `{'x': 1, 'y': 2}` },
+        { title: "Invert dict (swap k,v)", code: `d = {"a": 1, "b": 2}\nprint({v:k for k,v in d.items()})`, output: `{1: 'a', 2: 'b'}` },
+        { title: "Sort dict by value", code: `d = {"b": 2, "a": 3, "c": 1}\nprint(dict(sorted(d.items(), key=lambda x: x[1])))`, output: `{'c': 1, 'b': 2, 'a': 3}` },
+        { title: "Top N from dict", code: `scores = {"Ravi": 90, "Sara": 95, "Arjun": 78, "Meera": 88}\ntop2 = sorted(scores.items(), key=lambda x:-x[1])[:2]\nprint(top2)`, output: `[('Sara', 95), ('Ravi', 90)]` },
+        { title: "Set intersection (common)", code: `a = {1, 2, 3, 4}\nb = {3, 4, 5, 6}\nprint(a & b)`, output: `{3, 4}` },
+        { title: "Set difference (unique to a)", code: `a = {1, 2, 3}\nb = {2, 3, 4}\nprint(a - b)`, output: `{1}` },
+        { title: "Unique visitors count", code: `visits = ["A", "B", "A", "C", "B", "A"]\nprint(len(set(visits)))`, output: `3` },
+        { title: "Check subset", code: `req = {"read", "write"}\nhas = {"read", "write", "admin"}\nprint(req.issubset(has))`, output: `True` },
+        { title: "Common items in 3 lists", code: `a = [1,2,3,4]\nb = [2,3,5]\nc = [2,3,7]\nprint(set(a) & set(b) & set(c))`, output: `{2, 3}` },
+        { title: "Palindrome check", code: `def is_pal(s):\n    s = "".join(c.lower() for c in s if c.isalnum())\n    return s == s[::-1]\nprint(is_pal("A man a plan a canal Panama"))`, output: `True` },
+        { title: "Split into chunks of N", code: `data = list(range(10))\nn = 3\nchunks = [data[i:i+n] for i in range(0, len(data), n)]\nprint(chunks)`, output: `[[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]` },
+        { title: "Flatten nested list", code: `nested = [[1,2],[3,4],[5]]\nprint([x for row in nested for x in row])`, output: `[1, 2, 3, 4, 5]` },
+        { title: "Get last N elements", code: `a = list(range(10))\nprint(a[-3:])`, output: `[7, 8, 9]` },
+        { title: "Rotate list right by k", code: `a = [1,2,3,4,5]; k = 2\nprint(a[-k:] + a[:-k])`, output: `[4, 5, 1, 2, 3]` },
+        { title: "Zip parallel lists", code: `names = ["A", "B", "C"]\nages = [10, 20, 30]\nprint(dict(zip(names, ages)))`, output: `{'A': 10, 'B': 20, 'C': 30}` },
+        { title: "Enumerate with start=1", code: `for i, name in enumerate(["A", "B", "C"], start=1):\n    print(i, name)`, output: `1 A\n2 B\n3 C` },
+        { title: "Longest common prefix", code: `words = ["flower", "flow", "flight"]\nprefix = ""\nfor chars in zip(*words):\n    if len(set(chars)) == 1: prefix += chars[0]\n    else: break\nprint(prefix)`, output: `fl` },
+        { title: "Compress runs (run-length)", code: `s = "aaabbc"\nresult = ""\ni = 0\nwhile i < len(s):\n    c = s[i]; j = i\n    while j < len(s) and s[j] == c: j += 1\n    result += c + str(j-i)\n    i = j\nprint(result)`, output: `a3b2c1` },
+        { title: "First unique character", code: `from collections import Counter\ndef first(s):\n    c = Counter(s)\n    for ch in s:\n        if c[ch] == 1: return ch\n\nprint(first("aabbcde"))`, output: `c` },
+        { title: "Second largest", code: `a = [10, 20, 4, 45, 99, 20]\nprint(sorted(set(a))[-2])`, output: `45` },
+        { title: "Nested dict access", code: `db = {"user": {"id": 1, "prefs": {"theme": "dark"}}}\nprint(db["user"]["prefs"]["theme"])`, output: `dark` },
+        { title: "Safe nested access", code: `def deep_get(d, keys, default=None):\n    for k in keys:\n        if not isinstance(d, dict): return default\n        d = d.get(k, default)\n    return d\n\nprint(deep_get({"a":{"b":{"c":42}}}, ["a","b","c"]))`, output: `42` },
+        { title: "String template replace", code: `template = "Hello {name}, you scored {score}"\ndata = {"name": "Sara", "score": 90}\nprint(template.format(**data))`, output: `Hello Sara, you scored 90` },
+        { title: "Cart total with tax", code: `cart = [{"item":"A", "price":100, "qty":2}, {"item":"B", "price":50, "qty":3}]\nsub = sum(i["price"]*i["qty"] for i in cart)\ntotal = sub * 1.18\nprint(f"Subtotal: {sub}, Total: {total:.2f}")`, output: `Subtotal: 350, Total: 413.00` },
+        { title: "Group students by grade", code: `students = [("Ravi","A"), ("Sara","B"), ("Meera","A"), ("Arjun","B")]\nfrom collections import defaultdict\ng = defaultdict(list)\nfor n, gr in students: g[gr].append(n)\nprint(dict(g))`, output: `{'A': ['Ravi', 'Meera'], 'B': ['Sara', 'Arjun']}` },
+        { title: "Character frequency histogram", code: `from collections import Counter\nfor c, n in Counter("hello world").most_common():\n    print(f"{c}: {'#'*n}")`, output: `l: ###\no: ##\nh: #\ne: #\n : #\nw: #\nr: #\nd: #` },
+        { title: "Deduplicate list of dicts", code: `data = [{"id":1,"n":"A"}, {"id":2,"n":"B"}, {"id":1,"n":"A"}]\nseen = set(); out = []\nfor d in data:\n    key = tuple(sorted(d.items()))\n    if key not in seen:\n        seen.add(key); out.append(d)\nprint(len(out))`, output: `2` }
+      ]
     }
   ]
 });

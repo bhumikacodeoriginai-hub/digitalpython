@@ -196,6 +196,43 @@ window.DP.registerModule({
       ]
     },
     {
+      title: "Exceptions — Advanced Patterns",
+      badge: "Errors · 30+ examples",
+      notes: ["Advanced exception handling: chaining, custom hierarchies, context managers, best practices."],
+      examples: [
+        { title: "Common built-in exceptions", code: `for expr in ['int("x")', '[1,2][5]', '{}["a"]', '1/0', 'open("no.txt")']:\n    try: eval(expr)\n    except Exception as e: print(f"{type(e).__name__}: {e}")`, output: `ValueError: invalid literal for int() with base 10: 'x'\nIndexError: list index out of range\nKeyError: 'a'\nZeroDivisionError: division by zero\nFileNotFoundError: [Errno 2] No such file or directory: 'no.txt'` },
+        { title: "Custom exception class", code: `class InsufficientFundsError(Exception):\n    pass\n\ntry:\n    raise InsufficientFundsError("Balance too low")\nexcept InsufficientFundsError as e:\n    print(e)`, output: `Balance too low` },
+        { title: "Custom exception with attributes", code: `class BalanceError(Exception):\n    def __init__(self, requested, available):\n        self.requested = requested\n        self.available = available\n        super().__init__(f"Need {requested}, have {available}")\n\ntry:\n    raise BalanceError(500, 100)\nexcept BalanceError as e:\n    print(e.requested, e.available)`, output: `500 100` },
+        { title: "Exception hierarchy", code: `class AppError(Exception): pass\nclass NetworkError(AppError): pass\nclass TimeoutError(NetworkError): pass\n\ntry:\n    raise TimeoutError("slow")\nexcept AppError as e:\n    print(f"caught by parent: {type(e).__name__}")`, output: `caught by parent: TimeoutError` },
+        { title: "Exception chaining with 'from'", code: `try:\n    try:\n        int("abc")\n    except ValueError as e:\n        raise RuntimeError("Parse failed") from e\nexcept RuntimeError as e:\n    print(e, "|", e.__cause__)`, output: `Parse failed | invalid literal for int() with base 10: 'abc'` },
+        { title: "Suppress original with 'from None'", code: `try:\n    try:\n        1/0\n    except ZeroDivisionError:\n        raise ValueError("Cleaner") from None\nexcept ValueError as e:\n    print(e, "cause:", e.__cause__)`, output: `Cleaner cause: None` },
+        { title: "Re-raise current exception", code: `def process():\n    try:\n        1/0\n    except ZeroDivisionError:\n        print("logging...")\n        raise  # re-raises current\n\ntry:\n    process()\nexcept ZeroDivisionError as e:\n    print("caught outside:", e)`, output: `logging...\ncaught outside: division by zero` },
+        { title: "Access exception object attributes", code: `try:\n    raise ValueError("bad input", 42, {"context": "user"})\nexcept ValueError as e:\n    print(e.args, e.args[1])`, output: `('bad input', 42, {'context': 'user'}) 42` },
+        { title: "Catch multiple in one except", code: `for v in ["10", "abc", None]:\n    try: n = int(v)\n    except (ValueError, TypeError) as e:\n        print(type(e).__name__, e)\n    else: print("ok:", n)`, output: `ok: 10\nValueError invalid literal for int() with base 10: 'abc'\nTypeError int() argument must be a string, a bytes-like object or a real number, not 'NoneType'` },
+        { title: "ExceptionGroup (3.11+) syntax", code: `# Handle multiple concurrent errors\n# try:\n#     raise ExceptionGroup("mixed", [ValueError("a"), TypeError("b")])\n# except* ValueError as eg:\n#     print("caught ValueErrors:", eg.exceptions)\nprint("3.11+ syntax")`, output: `3.11+ syntax` },
+        { title: "contextlib.suppress", code: `from contextlib import suppress\nwith suppress(FileNotFoundError):\n    open("nonexistent.txt")\nprint("continued past missing file")`, output: `continued past missing file` },
+        { title: "Custom validation exception", code: `class ValidationError(Exception):\n    def __init__(self, field, reason):\n        self.field, self.reason = field, reason\n        super().__init__(f"{field}: {reason}")\n\ndef validate_age(x):\n    if x < 0: raise ValidationError("age", "cannot be negative")\n    if x > 150: raise ValidationError("age", "unrealistic")\n\ntry:\n    validate_age(-5)\nexcept ValidationError as e:\n    print(e.field, "->", e.reason)`, output: `age -> cannot be negative` },
+        { title: "Retry on exception (pattern)", code: `import time\ndef retry(fn, attempts=3, delay=0.01):\n    for i in range(attempts):\n        try:\n            return fn()\n        except Exception as e:\n            if i == attempts - 1: raise\n            time.sleep(delay)\n\ntry: retry(lambda: 1/0, attempts=2)\nexcept ZeroDivisionError as e: print("gave up:", e)`, output: `gave up: division by zero` },
+        { title: "assert vs raise (production tip)", code: `# assert is disabled with python -O\n# ALWAYS use raise for real validation:\ndef divide(a, b):\n    if b == 0:\n        raise ValueError("b must be non-zero")\n    return a / b\n\ntry: divide(10, 0)\nexcept ValueError as e: print(e)`, output: `b must be non-zero` },
+        { title: "finally still runs after return", code: `def risky():\n    try:\n        return "from try"\n    finally:\n        print("cleanup")\n\nprint(risky())`, output: `cleanup\nfrom try` },
+        { title: "try-finally without except", code: `resource_open = True\ntry:\n    print("using resource")\n    raise ValueError("oops")\nfinally:\n    resource_open = False\n    print("closed?", not resource_open)`, output: `using resource\nclosed? True\n` },
+        { title: "Nested try blocks", code: `try:\n    try:\n        1/0\n    except ZeroDivisionError:\n        print("inner caught")\n        raise ValueError("wrapped")\nexcept ValueError as e:\n    print("outer:", e)`, output: `inner caught\nouter: wrapped` },
+        { title: "Handle KeyboardInterrupt", code: `try:\n    # Simulated: user could press Ctrl+C during long op\n    raise KeyboardInterrupt("Ctrl+C")\nexcept KeyboardInterrupt:\n    print("gracefully exiting...")`, output: `gracefully exiting...` },
+        { title: "Distinguish empty vs missing dict key", code: `d = {"a": "", "b": "value"}\nfor k in ["a", "c"]:\n    try:\n        val = d[k]\n        print(k, "empty" if not val else val)\n    except KeyError:\n        print(k, "missing")`, output: `a empty\nc missing` },
+        { title: "Log error but continue", code: `import logging\nlogging.basicConfig(level=logging.WARNING, format="%(message)s")\nresults = []\nfor n in [10, "bad", 20]:\n    try:\n        results.append(int(n) * 2)\n    except (ValueError, TypeError) as e:\n        logging.warning(f"skipped {n!r}: {e}")\nprint(results)`, output: `[20, 40]` },
+        { title: "Guard clause pattern", code: `def process(user):\n    if not user: raise ValueError("user is required")\n    if "email" not in user: raise ValueError("email required")\n    if not user["email"]: raise ValueError("email empty")\n    return f"processing {user['email']}"\n\ntry: process({})\nexcept ValueError as e: print(e)`, output: `email required` },
+        { title: "Convert exceptions between layers", code: `class ServiceError(Exception): pass\n\ndef repo_get(uid):\n    raise KeyError(uid)  # DB layer\n\ndef service_get(uid):\n    try:\n        return repo_get(uid)\n    except KeyError as e:\n        raise ServiceError(f"user {e.args[0]} not found") from e\n\ntry: service_get(42)\nexcept ServiceError as e: print(e)`, output: `user 42 not found` },
+        { title: "Fallback on exception", code: `def get_config(key, default=None):\n    try:\n        return {"host": "localhost"}[key]\n    except KeyError:\n        return default\n\nprint(get_config("host"))\nprint(get_config("port", 8080))`, output: `localhost\n8080` },
+        { title: "Exception in list comprehension (no)", code: `# Can't try/except inside comprehension — use helper:\ndef safe(s):\n    try: return int(s)\n    except ValueError: return None\n\nprint([safe(x) for x in ["1", "2", "bad", "4"] if safe(x) is not None])`, output: `[1, 2, 4]` },
+        { title: "Exception in generator", code: `def gen():\n    for i in range(5):\n        try:\n            if i == 3: raise ValueError("bad at 3")\n            yield i\n        except ValueError as e:\n            print(f"skip: {e}")\n\nprint(list(gen()))`, output: `skip: bad at 3\n[0, 1, 2, 4]` },
+        { title: "except with warnings", code: `import warnings\ntry:\n    warnings.warn("Deprecated!", DeprecationWarning)\nexcept DeprecationWarning as e:\n    print("caught:", e)\nprint("normally warnings don't raise")`, output: `normally warnings don't raise` },
+        { title: "TypeError from wrong argument", code: `def add(a: int, b: int) -> int:\n    if not (isinstance(a, int) and isinstance(b, int)):\n        raise TypeError("both must be int")\n    return a + b\n\ntry: add(3, "4")\nexcept TypeError as e: print(e)`, output: `both must be int` },
+        { title: "StopIteration inside loop", code: `it = iter([1, 2, 3])\ntry:\n    while True:\n        print(next(it))\nexcept StopIteration:\n    print("done")`, output: `1\n2\n3\ndone` },
+        { title: "OverflowError with math", code: `import math\ntry:\n    print(math.exp(1000))\nexcept OverflowError as e:\n    print("too big:", e)`, output: `too big: math range error` },
+        { title: "PermissionError on file write", code: `try:\n    open("/root/protected.txt", "w")\nexcept PermissionError as e:\n    print("no write perms")\nexcept FileNotFoundError:\n    print("no path")`, output: `no write perms` }
+      ]
+    },
+    {
       title: "raise & Custom Exceptions",
       badge: "Errors",
       notes: ["`raise` throws an exception. Create your own by subclassing `Exception`."],
@@ -674,6 +711,38 @@ window.DP.registerModule({
         { title: "Custom context manager (class)", code: `class Timer:\n    def __enter__(self):\n        print("start")\n        return self\n    def __exit__(self, *a):\n        print("end")\n\nwith Timer():\n    print("working")`, output: `start\nworking\nend` },
         { title: "contextlib decorator", code: `from contextlib import contextmanager\n\n@contextmanager\ndef tag(name):\n    print(f"<{name}>")\n    yield\n    print(f"</{name}>")\n\nwith tag("b"):\n    print("bold")`, output: `<b>\nbold\n</b>` }
       ]
+    },
+    {
+      title: "Context Managers — Practical Patterns",
+      badge: "Context · 25+ examples",
+      notes: ["with-statement power beyond files: locks, database, timers, resource pooling."],
+      examples: [
+        { title: "File auto-close (classic)", code: `with open("/dev/null", "w") as f:\n    f.write("data")\nprint("file closed automatically")`, output: `file closed automatically` },
+        { title: "Multiple files at once", code: `# Read from one, write to another\nfrom pathlib import Path\np1 = Path("/tmp/src.txt"); p1.write_text("hello")\nwith open(p1) as src, open("/tmp/dst.txt", "w") as dst:\n    dst.write(src.read().upper())\nprint(Path("/tmp/dst.txt").read_text())`, output: `HELLO` },
+        { title: "Lock context manager", code: `import threading\nlock = threading.Lock()\nwith lock:\n    print("critical section")\nprint("lock released:", not lock.locked())`, output: `critical section\nlock released: True` },
+        { title: "Custom class-based CM", code: `class Timer:\n    def __enter__(self):\n        import time; self.t = time.time()\n        return self\n    def __exit__(self, *a):\n        import time\n        print(f"took {time.time() - self.t:.4f}s")\n\nwith Timer():\n    sum(range(100000))`, output: `took 0.0028s` },
+        { title: "Suppress errors on exit", code: `class IgnoreErrors:\n    def __enter__(self): return self\n    def __exit__(self, exc_type, exc_val, tb):\n        return True  # suppresses the exception\n\nwith IgnoreErrors():\n    1/0\nprint("continued past error")`, output: `continued past error` },
+        { title: "@contextmanager decorator", code: `from contextlib import contextmanager\n@contextmanager\ndef section(name):\n    print(f"[{name}] START")\n    yield\n    print(f"[{name}] END")\n\nwith section("load"):\n    print("loading data...")`, output: `[load] START\nloading data...\n[load] END` },
+        { title: "yield exception handling in CM", code: `from contextlib import contextmanager\n@contextmanager\ndef safe():\n    try:\n        yield\n    except ValueError as e:\n        print(f"caught in CM: {e}")\n\nwith safe():\n    raise ValueError("bad")\nprint("continued")`, output: `caught in CM: bad\ncontinued` },
+        { title: "Change directory temporarily", code: `import os\nfrom contextlib import contextmanager\n@contextmanager\ndef cd(path):\n    old = os.getcwd()\n    try:\n        os.chdir(path); yield\n    finally:\n        os.chdir(old)\n\nprint("cd context defined")`, output: `cd context defined` },
+        { title: "Redirect stdout to string", code: `from contextlib import redirect_stdout\nfrom io import StringIO\nbuf = StringIO()\nwith redirect_stdout(buf):\n    print("captured")\nprint("got:", buf.getvalue().strip())`, output: `got: captured` },
+        { title: "Redirect stderr", code: `from contextlib import redirect_stderr\nfrom io import StringIO\nimport sys\nbuf = StringIO()\nwith redirect_stderr(buf):\n    print("error!", file=sys.stderr)\nprint("captured:", buf.getvalue().strip())`, output: `captured: error!` },
+        { title: "contextlib.suppress", code: `from contextlib import suppress\nwith suppress(FileNotFoundError, KeyError):\n    open("nonexistent.txt")\n    {}["missing"]\nprint("safely skipped")`, output: `safely skipped` },
+        { title: "ExitStack for dynamic resources", code: `from contextlib import ExitStack\nfiles = ["/tmp/a.txt", "/tmp/b.txt"]\nfor p in files:\n    open(p, "w").write("x")\n\nwith ExitStack() as stack:\n    handles = [stack.enter_context(open(f)) for f in files]\n    print(f"opened {len(handles)} files")`, output: `opened 2 files` },
+        { title: "Nested with (multi-context)", code: `import threading\na = threading.Lock()\nb = threading.Lock()\nwith a, b:  # both acquired\n    print("both locked")\nprint("both released")`, output: `both locked\nboth released` },
+        { title: "closing() for resources with .close()", code: `from contextlib import closing\nclass Connection:\n    def query(self): return "data"\n    def close(self): print("connection closed")\n\nwith closing(Connection()) as conn:\n    print(conn.query())`, output: `data\nconnection closed` },
+        { title: "Timer with printed elapsed", code: `from contextlib import contextmanager\nimport time\n@contextmanager\ndef timer(label):\n    t = time.perf_counter()\n    yield\n    print(f"{label}: {time.perf_counter() - t:.4f}s")\n\nwith timer("process"):\n    sum(range(50000))`, output: `process: 0.0012s` },
+        { title: "Database transaction CM", code: `class Transaction:\n    def __enter__(self):\n        print("BEGIN")\n        return self\n    def __exit__(self, exc_type, *a):\n        if exc_type:\n            print("ROLLBACK")\n            return False\n        print("COMMIT")\n\nwith Transaction():\n    print("insert row")`, output: `BEGIN\ninsert row\nCOMMIT` },
+        { title: "Rollback on error via transaction", code: `class Transaction:\n    def __enter__(self): print("BEGIN"); return self\n    def __exit__(self, exc_type, *a):\n        print("ROLLBACK" if exc_type else "COMMIT")\n        return True  # suppress\n\nwith Transaction():\n    raise ValueError("oops")\nprint("continued")`, output: `BEGIN\nROLLBACK\ncontinued` },
+        { title: "Thread-safe resource with lock", code: `import threading\nfrom contextlib import contextmanager\nlock = threading.Lock()\n@contextmanager\ndef locked_resource():\n    with lock:\n        yield "resource-x"\n\nwith locked_resource() as r:\n    print("using", r)`, output: `using resource-x` },
+        { title: "Reusable context class", code: `class Log:\n    def __init__(self, name): self.name = name\n    def __enter__(self):\n        print(f"[{self.name}] start"); return self\n    def __exit__(self, *a):\n        print(f"[{self.name}] end")\n\nwith Log("A"):\n    with Log("B"):\n        print("nested work")`, output: `[A] start\n[B] start\nnested work\n[B] end\n[A] end` },
+        { title: "Suppress specific error only", code: `class SuppressType:\n    def __init__(self, t): self.t = t\n    def __enter__(self): return self\n    def __exit__(self, exc_type, *a):\n        return exc_type is self.t\n\nwith SuppressType(KeyError):\n    {}["x"]  # KeyError suppressed\nprint("continued")`, output: `continued` },
+        { title: "async with (async CM)", code: `import asyncio\nclass Session:\n    async def __aenter__(self): print("open"); return self\n    async def __aexit__(self, *a): print("close")\n\nasync def main():\n    async with Session():\n        print("using session")\nasyncio.run(main())`, output: `open\nusing session\nclose` },
+        { title: "asynccontextmanager", code: `import asyncio\nfrom contextlib import asynccontextmanager\n@asynccontextmanager\nasync def connect():\n    print("connecting")\n    yield "conn"\n    print("disconnecting")\n\nasync def main():\n    async with connect() as c:\n        print("using", c)\nasyncio.run(main())`, output: `connecting\nusing conn\ndisconnecting` },
+        { title: "Env variable temporarily", code: `import os\nfrom contextlib import contextmanager\n@contextmanager\ndef env(key, value):\n    old = os.environ.get(key)\n    os.environ[key] = value\n    try: yield\n    finally:\n        if old is None: del os.environ[key]\n        else: os.environ[key] = old\n\nwith env("MY_KEY", "value"):\n    print(os.environ.get("MY_KEY"))\nprint("after:", os.environ.get("MY_KEY"))`, output: `value\nafter: None` },
+        { title: "Simple pool acquire/release", code: `class Pool:\n    def __init__(self):\n        self.items = ["A", "B", "C"]\n    def __enter__(self):\n        self.taken = self.items.pop()\n        return self.taken\n    def __exit__(self, *a):\n        self.items.append(self.taken)\n\npool = Pool()\nwith pool as item:\n    print("using:", item, "| left:", len(pool.items))\nprint("returned. total:", len(pool.items))`, output: `using: C | left: 2\nreturned. total: 3` },
+        { title: "Multiple values in @contextmanager", code: `from contextlib import contextmanager\n@contextmanager\ndef pair():\n    yield ("a", "b")\n\nwith pair() as (x, y):\n    print(x, y)`, output: `a b` }
+      ]
     }
   ]
 });
@@ -694,6 +763,36 @@ window.DP.registerModule({
         { title: "Install packages", code: `pip install requests flask`, output: `Successfully installed flask-3.0.3 requests-2.32.3` },
         { title: "Freeze dependencies", code: `pip freeze > requirements.txt`, output: `# writes exact versions to requirements.txt` },
         { title: "Reinstall from file", code: `pip install -r requirements.txt`, output: `# installs all pinned packages` }
+      ]
+    },
+    {
+      title: "Virtual Environments & Packaging — Deep Dive",
+      badge: "Tooling · 20+ examples",
+      notes: ["Real workflows with venv, pip, poetry, uv, and packaging your own libraries."],
+      examples: [
+        { title: "Create venv on Linux/Mac", code: `# Terminal:\npython -m venv .venv\nsource .venv/bin/activate\n# prompt now shows (.venv)`, output: `(.venv) $ python --version` },
+        { title: "Create venv on Windows", code: `# Command Prompt:\npython -m venv .venv\n.venv\\Scripts\\activate\n# or PowerShell:\n.venv\\Scripts\\Activate.ps1`, output: `(.venv) PS>` },
+        { title: "Deactivate venv", code: `deactivate\n# prompt back to normal`, output: `# venv left` },
+        { title: "Check active Python", code: `import sys\nprint(sys.executable)\n# path includes .venv when active`, output: `/path/to/.venv/bin/python` },
+        { title: "List installed packages", code: `pip list`, output: `Package    Version\n---------- -------\npip        24.0\nrequests   2.32.3` },
+        { title: "Show package details", code: `pip show requests`, output: `Name: requests\nVersion: 2.32.3\nSummary: Python HTTP for Humans.` },
+        { title: "Install a specific version", code: `pip install requests==2.31.0`, output: `Successfully installed requests-2.31.0` },
+        { title: "Install version range", code: `pip install "requests>=2.28,<3.0"`, output: `# picks latest compatible` },
+        { title: "Upgrade a package", code: `pip install --upgrade requests`, output: `# to latest` },
+        { title: "Uninstall a package", code: `pip uninstall requests -y`, output: `Successfully uninstalled requests-2.32.3` },
+        { title: "Freeze pinned versions", code: `pip freeze > requirements.txt\ncat requirements.txt`, output: `requests==2.32.3\nurllib3==2.2.1` },
+        { title: "Install from requirements.txt", code: `pip install -r requirements.txt`, output: `# recreates env` },
+        { title: "Install editable (dev mode)", code: `# In your project root with pyproject.toml or setup.py:\npip install -e .\n# code changes take effect without reinstall`, output: `# development install` },
+        { title: "Install from GitHub", code: `pip install git+https://github.com/user/repo.git`, output: `# clones + installs` },
+        { title: "pyproject.toml (modern packaging)", code: `# pyproject.toml\n[project]\nname = "my-tool"\nversion = "0.1.0"\ndependencies = ["requests>=2.28"]\n\n[project.scripts]\nmy-tool = "my_tool:main"`, output: `# modern setup` },
+        { title: "Build a wheel", code: `pip install build\npython -m build\n# creates dist/*.whl and dist/*.tar.gz`, output: `# distributable package` },
+        { title: "Publish to PyPI", code: `pip install twine\ntwine upload dist/*\n# credentials from ~/.pypirc`, output: `# uploaded to PyPI` },
+        { title: "uv — fast modern installer", code: `pip install uv\nuv venv\nsource .venv/bin/activate\nuv pip install requests\n# 10-100x faster than pip`, output: `# blazing fast venv + install` },
+        { title: "poetry — dependency management", code: `# pyproject.toml is managed by poetry\npoetry init\npoetry add requests\npoetry install\npoetry run python script.py`, output: `# poetry-managed env` },
+        { title: "pipx — install CLI tools globally", code: `pip install pipx\npipx install black\npipx install ruff\n# each tool gets its own isolated venv`, output: `# global CLI installs` },
+        { title: ".env file with python-dotenv", code: `# .env file:\n# DATABASE_URL=postgres://...\n# API_KEY=secret\n\nfrom dotenv import load_dotenv\nimport os\nload_dotenv()\nprint(os.getenv("DATABASE_URL"))`, output: `postgres://...` },
+        { title: ".gitignore for venvs", code: `# .gitignore contents:\n.venv/\nvenv/\n__pycache__/\n*.pyc\n.env\ndist/\n*.egg-info/`, output: `# never commit these` },
+        { title: "Python version manager (pyenv)", code: `# Manage multiple Python versions:\npyenv install 3.12.4\npyenv install 3.11.9\npyenv local 3.12.4\n# .python-version file created`, output: `# per-project Python version` }
       ]
     }
   ]
@@ -1442,6 +1541,33 @@ window.DP.registerModule({
         { title: "Directory tree", code: `project/\n|-- app/\n|-- tests/\n|-- config/\n|-- models/\n|-- services/\n|-- requirements.txt\n|-- README.md`, output: `# a maintainable, scalable layout` },
         { title: "Package marker", code: `# app/__init__.py makes 'app' a package\nfrom .services import process\nprint("package initialised")`, output: `package initialised` }
       ]
+    },
+    {
+      title: "Project Structure — Professional",
+      badge: "Structure · 20+ examples",
+      notes: ["Real-world project layouts for scripts, libraries, web apps, and data science."],
+      examples: [
+        { title: "Simple script layout", code: `# For a small utility:\nmy_script/\n├── main.py\n├── requirements.txt\n└── README.md`, output: `# minimal but adequate` },
+        { title: "Library layout (src layout)", code: `# Modern recommended layout:\nmy_lib/\n├── src/\n│   └── my_lib/\n│       ├── __init__.py\n│       └── core.py\n├── tests/\n├── pyproject.toml\n├── README.md\n└── LICENSE`, output: `# src/ prevents accidental import` },
+        { title: "Flask app layout", code: `app/\n├── __init__.py       # create_app() factory\n├── models.py\n├── routes/\n│   ├── __init__.py\n│   ├── auth.py\n│   └── users.py\n├── templates/\n├── static/\n└── config.py`, output: `# Blueprint-based Flask` },
+        { title: "Django app layout", code: `myproject/\n├── manage.py\n├── myproject/     # settings\n│   ├── settings.py\n│   ├── urls.py\n│   └── wsgi.py\n└── myapp/         # feature\n    ├── models.py\n    ├── views.py\n    ├── admin.py\n    └── migrations/`, output: `# Django's opinionated layout` },
+        { title: "FastAPI project layout", code: `app/\n├── main.py           # FastAPI app\n├── api/\n│   └── v1/\n│       ├── users.py\n│       └── auth.py\n├── models/           # Pydantic + SQLAlchemy\n├── services/         # business logic\n├── db/\n└── tests/`, output: `# scalable API layout` },
+        { title: "Data science project", code: `project/\n├── data/\n│   ├── raw/\n│   ├── processed/\n│   └── external/\n├── notebooks/\n├── src/\n│   ├── data.py\n│   ├── features.py\n│   └── model.py\n└── models/           # saved artifacts`, output: `# Cookiecutter Data Science` },
+        { title: "Config module pattern", code: `# config.py\nimport os\nfrom dataclasses import dataclass\n\n@dataclass\nclass Config:\n    DEBUG: bool = os.getenv("DEBUG", "false") == "true"\n    DB_URL: str = os.getenv("DB_URL", "sqlite:///dev.db")\n\ncfg = Config()\nprint(cfg.DEBUG, cfg.DB_URL)`, output: `False sqlite:///dev.db` },
+        { title: "__init__.py exposes API", code: `# my_lib/__init__.py\nfrom .core import process, load\nfrom .version import __version__\n\n__all__ = ["process", "load", "__version__"]\n# Users write: from my_lib import process`, output: `# clean public API` },
+        { title: "Absolute vs relative imports", code: `# Prefer absolute in application code:\nfrom my_lib.core import process\n\n# Relative OK inside a package:\n# from .core import process\n# from ..utils import helper`, output: `# clarity for large codebases` },
+        { title: "Module __main__.py", code: `# my_pkg/__main__.py\ndef main():\n    print("Running my_pkg CLI!")\n\nif __name__ == "__main__":\n    main()\n\n# Run: python -m my_pkg`, output: `Running my_pkg CLI!` },
+        { title: "Constants module", code: `# constants.py\nMAX_RETRIES = 3\nDEFAULT_TIMEOUT = 30\nSUPPORTED_LOCALES = ("en", "hi", "es")\n\n# All uppercase, imported everywhere:\n# from .constants import MAX_RETRIES`, output: `# convention: UPPER_CASE, module-scoped` },
+        { title: "Custom exceptions module", code: `# exceptions.py\nclass AppError(Exception):\n    """Base for all app errors."""\n\nclass ValidationError(AppError): pass\nclass NotFoundError(AppError): pass\nclass PermissionDenied(AppError): pass\n\nprint("hierarchy defined")`, output: `hierarchy defined` },
+        { title: "logging setup module", code: `# logging_config.py\nimport logging.config\n\ndef setup_logging():\n    logging.config.dictConfig({\n        "version": 1,\n        "handlers": {"console": {"class": "logging.StreamHandler"}},\n        "root": {"level": "INFO", "handlers": ["console"]},\n    })\n\nsetup_logging()\nlogging.info("configured")`, output: `INFO:root:configured` },
+        { title: "Environment-specific configs", code: `# config/\n#   base.py    — shared\n#   dev.py     — overrides for dev\n#   prod.py    — overrides for prod\n# Load based on ENV variable:\nimport os\nenv = os.getenv("APP_ENV", "dev")\nprint(f"loading config for {env}")`, output: `loading config for dev` },
+        { title: "Layered architecture", code: `# Common backend layers:\n# 1. Presentation  (routes/views/serializers)\n# 2. Application   (use cases, services)\n# 3. Domain        (business rules, entities)\n# 4. Infrastructure (DB, APIs, external systems)\nprint("clean architecture layers")`, output: `clean architecture layers` },
+        { title: "Repository pattern layout", code: `# services + repositories:\n# repositories/user_repo.py    <- DB access\n# services/user_service.py     <- business logic\n# routes/users.py              <- HTTP layer\nprint("separation of concerns")`, output: `separation of concerns` },
+        { title: "pyproject.toml full example", code: `# [project]\n# name = "my-app"\n# version = "1.0.0"\n# dependencies = ["fastapi>=0.100", "sqlalchemy>=2"]\n# \n# [project.optional-dependencies]\n# dev = ["pytest", "ruff", "mypy"]\n# \n# [build-system]\n# requires = ["setuptools"]\nprint("modern packaging")`, output: `modern packaging` },
+        { title: "Makefile for common tasks", code: `# Makefile:\n# .PHONY: test lint fmt run\n# test: ; pytest\n# lint: ; ruff check .\n# fmt: ; ruff format .\n# run: ; python -m my_app\n# \n# Usage: make test`, output: `# 'make test' runs pytest` },
+        { title: "Docker-friendly structure", code: `# Dockerfile at project root:\n# FROM python:3.12-slim\n# WORKDIR /app\n# COPY requirements.txt .\n# RUN pip install -r requirements.txt\n# COPY . .\n# CMD ["python", "-m", "my_app"]\nprint("containerized")`, output: `containerized` },
+        { title: "README essentials", code: `# README.md structure:\n# 1. Project title + tagline\n# 2. Installation steps\n# 3. Quick usage example\n# 4. Configuration\n# 5. Development setup\n# 6. License\nprint("docs matter as much as code")`, output: `docs matter as much as code` }
+      ]
     }
   ]
 });
@@ -1462,6 +1588,44 @@ window.DP.registerModule({
         { title: "Branch & merge", code: `git checkout -b feature\n# ...make changes...\ngit commit -am "Add feature"\ngit checkout main\ngit merge feature`, output: `Fast-forward` },
         { title: "Clone & push", code: `git clone https://github.com/user/repo.git\n# ...edit...\ngit push origin main`, output: `# uploads commits to GitHub` }
       ]
+    },
+    {
+      title: "Git & GitHub — Everyday Commands",
+      badge: "Git · 30+ examples",
+      notes: ["Daily git commands + collaboration patterns every developer needs."],
+      examples: [
+        { title: "Initialize a new repo", code: `git init\ngit add .\ngit commit -m "Initial commit"`, output: `[main (root-commit) abc123] Initial commit` },
+        { title: "Check status", code: `git status`, output: `On branch main\nnothing to commit, working tree clean` },
+        { title: "Stage specific files", code: `git add file1.py file2.py\ngit add src/`, output: `# stages selected files` },
+        { title: "Commit with message", code: `git commit -m "Add user auth"`, output: `[main a1b2c3d] Add user auth` },
+        { title: "Amend last commit", code: `git commit --amend -m "Better message"\n# or add forgotten file:\ngit add forgotten.py\ngit commit --amend --no-edit`, output: `# rewrites last commit` },
+        { title: "View history", code: `git log --oneline -5`, output: `a1b2c3d Add user auth\nb2c3d4e Setup database\n...` },
+        { title: "View file changes", code: `git diff              # unstaged changes\ngit diff --staged     # staged changes\ngit diff HEAD         # everything`, output: `# shows diff` },
+        { title: "Create a branch", code: `git branch feature/login\ngit checkout feature/login\n# or shortcut:\ngit checkout -b feature/login`, output: `Switched to a new branch 'feature/login'` },
+        { title: "List branches", code: `git branch          # local\ngit branch -a       # all (with remote)\ngit branch -r       # remote only`, output: `* main\n  feature/login` },
+        { title: "Switch branches", code: `git checkout main\n# modern (3.23+):\ngit switch main`, output: `Switched to branch 'main'` },
+        { title: "Merge a branch", code: `git checkout main\ngit merge feature/login\n# Fast-forward or 3-way merge`, output: `# feature merged into main` },
+        { title: "Delete a branch", code: `git branch -d feature/login    # safe (only if merged)\ngit branch -D feature/login    # force`, output: `Deleted branch feature/login` },
+        { title: "Rebase onto main", code: `git checkout feature/login\ngit rebase main\n# Replays commits on top of main`, output: `# linear history` },
+        { title: "Interactive rebase (squash)", code: `git rebase -i HEAD~3\n# Editor opens; change 'pick' to 'squash' to combine commits`, output: `# 3 commits squashed to 1` },
+        { title: "Stash uncommitted changes", code: `git stash          # save\ngit stash pop      # restore + remove\ngit stash list     # see all\ngit stash apply    # restore, keep in stash`, output: `# temporary work saved` },
+        { title: "Undo staging", code: `git reset HEAD file.py       # unstage but keep changes\ngit restore --staged file.py # modern equivalent`, output: `# file unstaged` },
+        { title: "Discard local changes", code: `git checkout -- file.py     # legacy\ngit restore file.py         # modern\n# WARNING: destructive!`, output: `# file reverted to HEAD` },
+        { title: "Revert a commit (safe)", code: `git revert abc123\n# Creates a new commit that undoes the target\n# Safer than reset in shared branches`, output: `# undo commit safely` },
+        { title: "Reset to previous commit", code: `git reset --soft HEAD~1   # keep changes staged\ngit reset --mixed HEAD~1  # keep changes unstaged (default)\ngit reset --hard HEAD~1   # DISCARD everything`, output: `# careful with --hard` },
+        { title: "View remote URL", code: `git remote -v\n# origin  https://github.com/user/repo.git (fetch)\n# origin  https://github.com/user/repo.git (push)`, output: `origin  https://... (fetch/push)` },
+        { title: "Add a remote", code: `git remote add origin https://github.com/user/repo.git\ngit remote add upstream https://github.com/orig/repo.git`, output: `# remote linked` },
+        { title: "Fetch and pull", code: `git fetch origin           # download changes without merge\ngit pull origin main       # fetch + merge\ngit pull --rebase origin   # fetch + rebase (cleaner)`, output: `# stays in sync` },
+        { title: "Push a branch", code: `git push origin feature/login\n# First push (set upstream):\ngit push -u origin feature/login`, output: `# branch on GitHub` },
+        { title: "Force push (dangerous)", code: `# Only for YOUR branches, never for shared main:\ngit push --force-with-lease origin feature/login\n# force-with-lease is safer than --force`, output: `# use only on personal branches` },
+        { title: "Tag a release", code: `git tag v1.0.0\ngit tag -a v1.0.0 -m "First stable"\ngit push origin v1.0.0\n# or all tags:\ngit push --tags`, output: `# release marked` },
+        { title: ".gitignore essentials", code: `# .gitignore\n__pycache__/\n*.pyc\n.venv/\n.env\ndist/\nbuild/\n*.egg-info/\n.pytest_cache/\n.coverage`, output: `# these never enter git` },
+        { title: "Cherry-pick a commit", code: `git checkout main\ngit cherry-pick abc123    # apply that commit to main`, output: `# specific commit copied` },
+        { title: "Blame a line", code: `git blame src/app.py       # shows who wrote each line\ngit blame -L 10,20 app.py  # only lines 10-20`, output: `# who introduced each line?` },
+        { title: "GitHub PR workflow", code: `# 1. Fork repo on GitHub\n# 2. git clone your-fork\n# 3. git checkout -b feature/name\n# 4. make changes, commit, push\n# 5. Open Pull Request on GitHub\n# 6. Reviews + CI passes\n# 7. Squash and merge`, output: `# standard OSS workflow` },
+        { title: "Conventional commits", code: `# Standardize commit messages:\ngit commit -m "feat: add user login"\ngit commit -m "fix: correct timezone bug"\ngit commit -m "docs: update README"\ngit commit -m "refactor: extract auth service"`, output: `# types: feat/fix/docs/refactor/test/chore` },
+        { title: "GitHub Actions basic CI", code: `# .github/workflows/ci.yml\nname: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with: {python-version: '3.12'}\n      - run: pip install -r requirements.txt\n      - run: pytest`, output: `# runs tests on every push` }
+      ]
     }
   ]
 });
@@ -1480,6 +1644,39 @@ window.DP.registerModule({
       examples: [
         { title: "Flask hello route", code: `from flask import Flask\napp = Flask(__name__)\n\n@app.route("/")\ndef home():\n    return "Hello from Flask!"\n\n# flask run`, output: `Hello from Flask!` },
         { title: "FastAPI endpoint", code: `from fastapi import FastAPI\napp = FastAPI()\n\n@app.get("/items/{item_id}")\ndef read_item(item_id: int):\n    return {"item_id": item_id}\n\n# uvicorn main:app`, output: `{"item_id": 5}` }
+      ]
+    },
+    {
+      title: "Web Development — Flask, Django, FastAPI",
+      badge: "Web · 25+ examples",
+      notes: ["Practical web development patterns across the three major Python frameworks."],
+      examples: [
+        { title: "Flask minimal app", code: `from flask import Flask\napp = Flask(__name__)\n\n@app.route("/")\ndef home():\n    return "Hello, World!"\n\n# flask run  →  http://127.0.0.1:5000/`, output: `Hello, World!` },
+        { title: "Flask with JSON", code: `from flask import Flask, jsonify\napp = Flask(__name__)\n\n@app.route("/api/users")\ndef users():\n    return jsonify([{"id": 1, "name": "Sara"}])`, output: `[{"id":1,"name":"Sara"}]` },
+        { title: "Flask URL parameters", code: `from flask import Flask\napp = Flask(__name__)\n\n@app.route("/user/<int:uid>")\ndef user(uid):\n    return f"User ID: {uid}"`, output: `# GET /user/42 → User ID: 42` },
+        { title: "Flask query args", code: `from flask import Flask, request\napp = Flask(__name__)\n\n@app.route("/search")\ndef search():\n    q = request.args.get("q", "")\n    return f"Searching: {q}"`, output: `# /search?q=python → Searching: python` },
+        { title: "Flask POST body", code: `from flask import Flask, request, jsonify\napp = Flask(__name__)\n\n@app.route("/api/user", methods=["POST"])\ndef create():\n    data = request.get_json()\n    return jsonify({"created": data}), 201`, output: `# 201 Created` },
+        { title: "Flask template rendering", code: `from flask import Flask, render_template\napp = Flask(__name__)\n\n@app.route("/hello/<name>")\ndef hello(name):\n    return render_template("hello.html", name=name)\n# templates/hello.html: <h1>Hi {{ name }}</h1>`, output: `<h1>Hi Sara</h1>` },
+        { title: "Flask Blueprint (modular)", code: `from flask import Blueprint\nauth = Blueprint("auth", __name__, url_prefix="/auth")\n\n@auth.route("/login")\ndef login():\n    return "Login page"\n\n# app.register_blueprint(auth)`, output: `# Modular Flask` },
+        { title: "Flask error handler", code: `from flask import Flask, jsonify\napp = Flask(__name__)\n\n@app.errorhandler(404)\ndef not_found(e):\n    return jsonify({"error": "Not found"}), 404`, output: `# custom 404 response` },
+        { title: "Django model", code: `# models.py\nfrom django.db import models\n\nclass Book(models.Model):\n    title = models.CharField(max_length=200)\n    author = models.CharField(max_length=100)\n    published = models.DateField()\n    \n    def __str__(self):\n        return self.title`, output: `# ORM model` },
+        { title: "Django view (function-based)", code: `# views.py\nfrom django.http import JsonResponse\nfrom .models import Book\n\ndef book_list(request):\n    books = Book.objects.all().values("id", "title")\n    return JsonResponse(list(books), safe=False)`, output: `# JSON list of books` },
+        { title: "Django URL routing", code: `# urls.py\nfrom django.urls import path\nfrom . import views\n\nurlpatterns = [\n    path("books/", views.book_list),\n    path("books/<int:pk>/", views.book_detail),\n]`, output: `# routes wired` },
+        { title: "Django class-based view", code: `from django.views.generic import ListView\nfrom .models import Book\n\nclass BookListView(ListView):\n    model = Book\n    template_name = "books/list.html"\n    context_object_name = "books"`, output: `# reusable CBV` },
+        { title: "Django ORM queries", code: `# from .models import Book\n# Book.objects.filter(author="Sara")\n# Book.objects.exclude(published__year=2020)\n# Book.objects.filter(title__icontains="python")\n# Book.objects.order_by("-published")[:10]\nprint("ORM queries")`, output: `ORM queries` },
+        { title: "Django migration workflow", code: `# Terminal:\npython manage.py makemigrations\npython manage.py migrate\npython manage.py showmigrations`, output: `# schema tracked` },
+        { title: "Django admin auto-registration", code: `# admin.py\nfrom django.contrib import admin\nfrom .models import Book\n\n@admin.register(Book)\nclass BookAdmin(admin.ModelAdmin):\n    list_display = ["title", "author"]\n    search_fields = ["title"]`, output: `# free admin UI` },
+        { title: "FastAPI basic route", code: `from fastapi import FastAPI\napp = FastAPI()\n\n@app.get("/")\ndef root():\n    return {"message": "Hello"}\n\n# uvicorn main:app --reload`, output: `{"message": "Hello"}` },
+        { title: "FastAPI path + query params", code: `from fastapi import FastAPI\napp = FastAPI()\n\n@app.get("/items/{item_id}")\ndef read(item_id: int, q: str = None):\n    return {"item_id": item_id, "q": q}`, output: `{"item_id": 5, "q": "test"}` },
+        { title: "FastAPI Pydantic request body", code: `from fastapi import FastAPI\nfrom pydantic import BaseModel\n\napp = FastAPI()\n\nclass User(BaseModel):\n    name: str\n    email: str\n    age: int | None = None\n\n@app.post("/users/")\ndef create(user: User):\n    return user`, output: `# auto-validated body` },
+        { title: "FastAPI response model", code: `from fastapi import FastAPI\nfrom pydantic import BaseModel\napp = FastAPI()\n\nclass UserOut(BaseModel):\n    id: int\n    name: str\n\n@app.get("/users/{uid}", response_model=UserOut)\ndef get(uid: int):\n    return {"id": uid, "name": "Sara", "secret": "hidden"}\n# 'secret' filtered out`, output: `# only id + name returned` },
+        { title: "FastAPI dependency injection", code: `from fastapi import FastAPI, Depends\napp = FastAPI()\n\ndef common_params(skip: int = 0, limit: int = 10):\n    return {"skip": skip, "limit": limit}\n\n@app.get("/items/")\ndef read_items(params: dict = Depends(common_params)):\n    return params`, output: `# reusable DI` },
+        { title: "FastAPI auth with header", code: `from fastapi import FastAPI, Header, HTTPException\napp = FastAPI()\n\n@app.get("/secure/")\ndef secure(x_token: str = Header(...)):\n    if x_token != "secret":\n        raise HTTPException(401, "Invalid token")\n    return {"ok": True}`, output: `# 401 or {"ok": true}` },
+        { title: "FastAPI background task", code: `from fastapi import FastAPI, BackgroundTasks\napp = FastAPI()\n\ndef send_email(to: str, body: str):\n    print(f"Sent to {to}")\n\n@app.post("/notify/")\ndef notify(to: str, bg: BackgroundTasks):\n    bg.add_task(send_email, to, "hi")\n    return {"queued": True}`, output: `# async background job` },
+        { title: "FastAPI file upload", code: `from fastapi import FastAPI, UploadFile\napp = FastAPI()\n\n@app.post("/upload/")\nasync def upload(file: UploadFile):\n    content = await file.read()\n    return {"filename": file.filename, "size": len(content)}`, output: `# receives file uploads` },
+        { title: "FastAPI streaming response", code: `from fastapi import FastAPI\nfrom fastapi.responses import StreamingResponse\napp = FastAPI()\n\ndef gen():\n    for i in range(5):\n        yield f"chunk {i}\\n"\n\n@app.get("/stream/")\ndef stream():\n    return StreamingResponse(gen(), media_type="text/plain")`, output: `# streams data chunk by chunk` },
+        { title: "FastAPI CORS setup", code: `from fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\napp = FastAPI()\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=["https://myfrontend.com"],\n    allow_methods=["*"],\n    allow_headers=["*"],\n)`, output: `# CORS enabled` },
+        { title: "JWT auth pattern (FastAPI)", code: `from fastapi import FastAPI, Depends, HTTPException\nfrom fastapi.security import OAuth2PasswordBearer\napp = FastAPI()\noauth = OAuth2PasswordBearer(tokenUrl="/token")\n\n@app.get("/me")\ndef me(token: str = Depends(oauth)):\n    # verify JWT here\n    if not token: raise HTTPException(401)\n    return {"user": "Sara"}`, output: `# JWT-protected endpoint` }
       ]
     }
   ]
@@ -1500,6 +1697,40 @@ window.DP.registerModule({
         { title: "NumPy array math", code: `import numpy as np\na = np.array([1, 2, 3])\nprint(a * 2)\nprint(a.mean())`, output: `[2 4 6]\n2.0` },
         { title: "Pandas DataFrame", code: `import pandas as pd\ndf = pd.DataFrame({"name": ["A", "B"], "score": [90, 80]})\nprint(df["score"].mean())`, output: `85.0` }
       ]
+    },
+    {
+      title: "Data Analysis — NumPy, Pandas, Matplotlib",
+      badge: "Data · 25+ examples",
+      notes: ["Practical data analysis: create, load, transform, analyze, visualize."],
+      examples: [
+        { title: "NumPy array basics", code: `import numpy as np\na = np.array([1, 2, 3, 4, 5])\nprint(a.shape, a.dtype, a.mean())`, output: `(5,) int64 3.0` },
+        { title: "NumPy 2D array", code: `import numpy as np\nm = np.array([[1,2,3],[4,5,6]])\nprint(m.shape, m.sum(axis=0), m.sum(axis=1))`, output: `(2, 3) [5 7 9] [ 6 15]` },
+        { title: "NumPy range functions", code: `import numpy as np\nprint(np.arange(0, 10, 2))\nprint(np.linspace(0, 1, 5))\nprint(np.zeros(3), np.ones(3))`, output: `[0 2 4 6 8]\n[0.   0.25 0.5  0.75 1.  ]\n[0. 0. 0.] [1. 1. 1.]` },
+        { title: "NumPy vectorized math", code: `import numpy as np\na = np.array([1, 2, 3, 4])\nprint(a * 2, a ** 2, np.sqrt(a))`, output: `[2 4 6 8] [ 1  4  9 16] [1.  1.41 1.73 2. ]` },
+        { title: "NumPy boolean indexing", code: `import numpy as np\na = np.array([10, 25, 5, 30, 15])\nprint(a[a > 15])\nprint(a[(a > 5) & (a < 25)])`, output: `[25 30]\n[10 15]` },
+        { title: "NumPy statistics", code: `import numpy as np\na = np.array([4, 8, 15, 16, 23, 42])\nprint(f"mean={a.mean()}, std={a.std():.2f}, median={np.median(a)}")`, output: `mean=18.0, std=12.35, median=15.5` },
+        { title: "Pandas DataFrame from dict", code: `import pandas as pd\ndf = pd.DataFrame({\n    "name": ["A", "B", "C"],\n    "age": [25, 30, 22],\n    "city": ["NY", "LA", "NY"]\n})\nprint(df)`, output: `  name  age city\n0    A   25   NY\n1    B   30   LA\n2    C   22   NY` },
+        { title: "Read CSV", code: `import pandas as pd\n# df = pd.read_csv("data.csv")\ndf = pd.DataFrame({"a": [1,2,3], "b": [4,5,6]})\nprint(df.head())`, output: `   a  b\n0  1  4\n1  2  5\n2  3  6` },
+        { title: "Filter rows", code: `import pandas as pd\ndf = pd.DataFrame({"age": [25, 30, 22, 35], "city": ["NY","LA","NY","LA"]})\nprint(df[df["age"] > 25])`, output: `   age city\n1   30   LA\n3   35   LA` },
+        { title: "Multiple conditions", code: `import pandas as pd\ndf = pd.DataFrame({"age": [25, 30, 22, 35], "city": ["NY","LA","NY","LA"]})\nprint(df[(df["age"] > 20) & (df["city"] == "NY")])`, output: `   age city\n0   25   NY\n2   22   NY` },
+        { title: "Select columns", code: `import pandas as pd\ndf = pd.DataFrame({"a":[1,2],"b":[3,4],"c":[5,6]})\nprint(df[["a", "c"]])`, output: `   a  c\n0  1  5\n1  2  6` },
+        { title: "loc vs iloc", code: `import pandas as pd\ndf = pd.DataFrame({"a":[1,2,3], "b":[10,20,30]})\nprint(df.loc[0, "a"])       # by label\nprint(df.iloc[1, 0])        # by position`, output: `1\n2` },
+        { title: "Add / modify column", code: `import pandas as pd\ndf = pd.DataFrame({"price": [100, 200, 300]})\ndf["tax"] = df["price"] * 0.18\ndf["total"] = df["price"] + df["tax"]\nprint(df)`, output: `   price   tax  total\n0    100  18.0  118.0\n1    200  36.0  236.0\n2    300  54.0  354.0` },
+        { title: "GroupBy aggregate", code: `import pandas as pd\ndf = pd.DataFrame({\n    "city": ["NY","LA","NY","LA","NY"],\n    "sales": [100, 200, 150, 300, 50]\n})\nprint(df.groupby("city")["sales"].sum())`, output: `city\nLA    500\nNY    300\nName: sales, dtype: int64` },
+        { title: "Multiple aggregations", code: `import pandas as pd\ndf = pd.DataFrame({"city":["A","B","A","B"], "val":[10,20,30,40]})\nprint(df.groupby("city").agg({"val": ["sum", "mean", "max"]}))`, output: `# sum/mean/max per city` },
+        { title: "Sort DataFrame", code: `import pandas as pd\ndf = pd.DataFrame({"name":["C","A","B"], "score":[80, 95, 70]})\nprint(df.sort_values("score", ascending=False))`, output: `  name  score\n1    A     95\n0    C     80\n2    B     70` },
+        { title: "Handle missing data", code: `import pandas as pd\nimport numpy as np\ndf = pd.DataFrame({"a": [1, np.nan, 3, np.nan]})\nprint(df.dropna())\nprint(df.fillna(0))`, output: `     a\n0  1.0\n2  3.0\n     a\n0  1.0\n1  0.0\n2  3.0\n3  0.0` },
+        { title: "Apply function", code: `import pandas as pd\ndf = pd.DataFrame({"n": [1, 2, 3, 4]})\ndf["sq"] = df["n"].apply(lambda x: x * x)\nprint(df)`, output: `   n  sq\n0  1   1\n1  2   4\n2  3   9\n3  4  16` },
+        { title: "Merge DataFrames (JOIN)", code: `import pandas as pd\nusers = pd.DataFrame({"id":[1,2,3], "name":["A","B","C"]})\norders = pd.DataFrame({"uid":[1,1,2], "item":["Book","Pen","Bag"]})\nprint(pd.merge(users, orders, left_on="id", right_on="uid"))`, output: `# joined rows` },
+        { title: "Concatenate DataFrames", code: `import pandas as pd\na = pd.DataFrame({"x": [1, 2]})\nb = pd.DataFrame({"x": [3, 4]})\nprint(pd.concat([a, b], ignore_index=True))`, output: `   x\n0  1\n1  2\n2  3\n3  4` },
+        { title: "Pivot table", code: `import pandas as pd\ndf = pd.DataFrame({\n    "city": ["A","A","B","B"],\n    "product": ["X","Y","X","Y"],\n    "sales": [10, 20, 30, 40]\n})\nprint(df.pivot_table(values="sales", index="city", columns="product"))`, output: `product   X   Y\ncity           \nA        10  20\nB        30  40` },
+        { title: "Value counts (frequency)", code: `import pandas as pd\ns = pd.Series(["A", "B", "A", "C", "A", "B"])\nprint(s.value_counts())`, output: `A    3\nB    2\nC    1\nName: count, dtype: int64` },
+        { title: "String methods", code: `import pandas as pd\ns = pd.Series(["Hello", "World", "Python"])\nprint(s.str.upper())\nprint(s.str.len())`, output: `0     HELLO\n1     WORLD\n2    PYTHON\n0    5\n1    5\n2    6` },
+        { title: "Date parsing", code: `import pandas as pd\ndf = pd.DataFrame({"date": ["2024-01-15", "2024-02-20"]})\ndf["date"] = pd.to_datetime(df["date"])\nprint(df["date"].dt.year.tolist())`, output: `[2024, 2024]` },
+        { title: "Save to CSV", code: `import pandas as pd\ndf = pd.DataFrame({"a":[1,2], "b":[3,4]})\n# df.to_csv("output.csv", index=False)\n# df.to_excel("output.xlsx", sheet_name="data")\n# df.to_parquet("output.parquet")\nprint("saved in various formats")`, output: `saved in various formats` },
+        { title: "Matplotlib line plot", code: `# import matplotlib.pyplot as plt\n# plt.plot([1,2,3,4], [10,20,15,25])\n# plt.xlabel("x"); plt.ylabel("y")\n# plt.title("Sample")\n# plt.savefig("plot.png")\nprint("chart saved")`, output: `chart saved` },
+        { title: "Matplotlib bar chart", code: `# import matplotlib.pyplot as plt\n# categories = ["A", "B", "C"]\n# values = [10, 25, 15]\n# plt.bar(categories, values, color="steelblue")\n# plt.savefig("bar.png")\nprint("bar chart saved")`, output: `bar chart saved` }
+      ]
     }
   ]
 });
@@ -1518,6 +1749,38 @@ window.DP.registerModule({
       examples: [
         { title: "Parse HTML", code: `from bs4 import BeautifulSoup\nhtml = "<h1>Title</h1><p>Body</p>"\nsoup = BeautifulSoup(html, "html.parser")\nprint(soup.h1.text)`, output: `Title` },
         { title: "Find all links", code: `from bs4 import BeautifulSoup\nhtml = '<a href="/a">A</a><a href="/b">B</a>'\nsoup = BeautifulSoup(html, "html.parser")\nprint([a["href"] for a in soup.find_all("a")])`, output: `['/a', '/b']` }
+      ]
+    },
+    {
+      title: "Automation — Practical Scripts",
+      badge: "Automation · 25+ examples",
+      notes: ["Real automation tasks: file management, scraping, Excel, PDF, email, scheduling."],
+      examples: [
+        { title: "Rename multiple files", code: `from pathlib import Path\nimport os\n# for p in Path("photos").glob("*.jpg"):\n#     new = p.with_name(f"vacation_{p.stem}.jpg")\n#     p.rename(new)\nprint("batch rename pattern")`, output: `batch rename pattern` },
+        { title: "Delete files matching pattern", code: `from pathlib import Path\n# for f in Path(".").glob("*.tmp"):\n#     f.unlink()\nprint("cleanup pattern")`, output: `cleanup pattern` },
+        { title: "Copy files to backup folder", code: `import shutil\nfrom pathlib import Path\n# src = Path("data")\n# dst = Path("backup")\n# for f in src.glob("*.csv"):\n#     shutil.copy(f, dst / f.name)\nprint("backup pattern")`, output: `backup pattern` },
+        { title: "Zip a folder", code: `import shutil\n# shutil.make_archive("archive", "zip", "my_folder")\n# creates archive.zip\nprint("folder zipped")`, output: `folder zipped` },
+        { title: "Unzip archive", code: `import zipfile\n# with zipfile.ZipFile("archive.zip") as zf:\n#     zf.extractall("output/")\nprint("unzip pattern")`, output: `unzip pattern` },
+        { title: "Scrape webpage with BeautifulSoup", code: `from bs4 import BeautifulSoup\nhtml = "<html><h1>Title</h1><p>Paragraph</p></html>"\nsoup = BeautifulSoup(html, "html.parser")\nprint(soup.h1.text)\nprint(soup.p.text)`, output: `Title\nParagraph` },
+        { title: "Extract all image URLs", code: `from bs4 import BeautifulSoup\nhtml = '<img src="a.jpg"><img src="b.png">'\nsoup = BeautifulSoup(html, "html.parser")\nprint([img["src"] for img in soup.find_all("img")])`, output: `['a.jpg', 'b.png']` },
+        { title: "Table extraction", code: `from bs4 import BeautifulSoup\nhtml = "<table><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table>"\nsoup = BeautifulSoup(html, "html.parser")\nfor row in soup.find_all("tr"):\n    print([c.text for c in row.find_all("td")])`, output: `['1', '2']\n['3', '4']` },
+        { title: "CSS selector search", code: `from bs4 import BeautifulSoup\nhtml = '<div class="item">A</div><div class="item">B</div>'\nsoup = BeautifulSoup(html, "html.parser")\nprint([el.text for el in soup.select(".item")])`, output: `['A', 'B']` },
+        { title: "Excel with openpyxl (write)", code: `# import openpyxl\n# wb = openpyxl.Workbook()\n# ws = wb.active\n# ws["A1"] = "Name"\n# ws["B1"] = "Score"\n# ws.append(["Sara", 95])\n# ws.append(["Ravi", 88])\n# wb.save("scores.xlsx")\nprint("Excel written")`, output: `Excel written` },
+        { title: "Excel read (openpyxl)", code: `# import openpyxl\n# wb = openpyxl.load_workbook("scores.xlsx")\n# ws = wb.active\n# for row in ws.iter_rows(values_only=True):\n#     print(row)\nprint("Excel read pattern")`, output: `Excel read pattern` },
+        { title: "Excel with pandas", code: `import pandas as pd\n# df = pd.read_excel("data.xlsx", sheet_name="Sales")\n# df.to_excel("output.xlsx", index=False)\nprint("pandas Excel")`, output: `pandas Excel` },
+        { title: "PDF text extraction", code: `# import PyPDF2\n# with open("doc.pdf", "rb") as f:\n#     reader = PyPDF2.PdfReader(f)\n#     for page in reader.pages:\n#         print(page.extract_text())\nprint("PDF extraction pattern")`, output: `PDF extraction pattern` },
+        { title: "PDF create (reportlab)", code: `# from reportlab.pdfgen import canvas\n# c = canvas.Canvas("output.pdf")\n# c.drawString(100, 750, "Hello PDF!")\n# c.save()\nprint("PDF written")`, output: `PDF written` },
+        { title: "Send email (SMTP)", code: `import smtplib\nfrom email.mime.text import MIMEText\n# msg = MIMEText("Hello!")\n# msg["Subject"] = "Test"\n# msg["From"] = "me@example.com"\n# msg["To"] = "you@example.com"\n# with smtplib.SMTP("smtp.gmail.com", 587) as s:\n#     s.starttls()\n#     s.login(user, pwd)\n#     s.send_message(msg)\nprint("email pattern")`, output: `email pattern` },
+        { title: "Send email with attachment", code: `# from email.mime.multipart import MIMEMultipart\n# from email.mime.base import MIMEBase\n# from email import encoders\n# msg = MIMEMultipart()\n# with open("report.pdf", "rb") as f:\n#     part = MIMEBase("application", "octet-stream")\n#     part.set_payload(f.read())\n#     encoders.encode_base64(part)\n#     part.add_header("Content-Disposition", "attachment; filename=report.pdf")\n#     msg.attach(part)\nprint("attachment pattern")`, output: `attachment pattern` },
+        { title: "Schedule with schedule lib", code: `# import schedule, time\n# def job(): print("Running task")\n# schedule.every(10).minutes.do(job)\n# schedule.every().day.at("09:00").do(job)\n# while True:\n#     schedule.run_pending()\n#     time.sleep(1)\nprint("scheduling pattern")`, output: `scheduling pattern` },
+        { title: "cron-like via apscheduler", code: `# from apscheduler.schedulers.blocking import BlockingScheduler\n# sched = BlockingScheduler()\n# @sched.scheduled_job('cron', hour=9)\n# def daily(): print("morning task")\n# sched.start()\nprint("apscheduler pattern")`, output: `apscheduler pattern` },
+        { title: "Auto-fill form (Selenium)", code: `# from selenium import webdriver\n# from selenium.webdriver.common.by import By\n# driver = webdriver.Chrome()\n# driver.get("https://example.com/login")\n# driver.find_element(By.NAME, "user").send_keys("me")\n# driver.find_element(By.NAME, "pass").send_keys("secret")\n# driver.find_element(By.ID, "submit").click()\nprint("selenium pattern")`, output: `selenium pattern` },
+        { title: "Selenium screenshot", code: `# driver.get("https://example.com")\n# driver.save_screenshot("page.png")\n# element = driver.find_element(By.ID, "logo")\n# element.screenshot("logo.png")\nprint("screenshot pattern")`, output: `screenshot pattern` },
+        { title: "Playwright (modern alternative)", code: `# from playwright.sync_api import sync_playwright\n# with sync_playwright() as p:\n#     browser = p.chromium.launch()\n#     page = browser.new_page()\n#     page.goto("https://example.com")\n#     page.click("text=Login")\n#     browser.close()\nprint("playwright pattern")`, output: `playwright pattern` },
+        { title: "Download files via requests", code: `# import requests\n# r = requests.get("https://example.com/file.pdf", stream=True)\n# with open("file.pdf", "wb") as f:\n#     for chunk in r.iter_content(8192):\n#         f.write(chunk)\nprint("download pattern")`, output: `download pattern` },
+        { title: "Bulk API calls", code: `# import requests\n# results = []\n# for uid in range(1, 101):\n#     r = requests.get(f"https://api.example.com/users/{uid}")\n#     results.append(r.json())\nprint("bulk API")`, output: `bulk API` },
+        { title: "Convert images (Pillow)", code: `# from PIL import Image\n# for f in Path("photos").glob("*.png"):\n#     img = Image.open(f)\n#     img.save(f.with_suffix(".jpg"), "JPEG", quality=85)\nprint("image convert pattern")`, output: `image convert pattern` },
+        { title: "Resize images", code: `# from PIL import Image\n# img = Image.open("photo.jpg")\n# img.thumbnail((800, 800))\n# img.save("photo_small.jpg")\nprint("thumbnail pattern")`, output: `thumbnail pattern` }
       ]
     }
   ]
@@ -1539,6 +1802,34 @@ window.DP.registerModule({
         { title: "List S3 buckets", code: `import boto3\ns3 = boto3.client("s3")\nfor b in s3.list_buckets()["Buckets"]:\n    print(b["Name"])`, output: `my-bucket` },
         { title: "Lambda handler", code: `def lambda_handler(event, context):\n    name = event.get("name", "World")\n    return {"statusCode": 200, "body": f"Hello {name}"}`, output: `{'statusCode': 200, 'body': 'Hello World'}` }
       ]
+    },
+    {
+      title: "Cloud Python — AWS Practical",
+      badge: "Cloud · 20+ examples",
+      notes: ["Practical AWS SDK (boto3) patterns for S3, DynamoDB, Lambda, and more."],
+      examples: [
+        { title: "boto3 basic setup", code: `# import boto3\n# s3 = boto3.client("s3")   # uses default credentials\n# session = boto3.Session(profile_name="dev")\nprint("boto3 client ready")`, output: `boto3 client ready` },
+        { title: "S3 list buckets", code: `# import boto3\n# s3 = boto3.client("s3")\n# for b in s3.list_buckets()["Buckets"]:\n#     print(b["Name"], b["CreationDate"])\nprint("bucket list pattern")`, output: `bucket list pattern` },
+        { title: "S3 upload file", code: `# import boto3\n# s3 = boto3.client("s3")\n# s3.upload_file("report.pdf", "my-bucket", "reports/report.pdf")\nprint("uploaded to S3")`, output: `uploaded to S3` },
+        { title: "S3 download file", code: `# s3.download_file("my-bucket", "reports/report.pdf", "local.pdf")\nprint("downloaded")`, output: `downloaded` },
+        { title: "S3 list objects with prefix", code: `# response = s3.list_objects_v2(\n#     Bucket="my-bucket",\n#     Prefix="reports/"\n# )\n# for obj in response.get("Contents", []):\n#     print(obj["Key"], obj["Size"])\nprint("S3 list pattern")`, output: `S3 list pattern` },
+        { title: "S3 upload with metadata", code: `# s3.put_object(\n#     Bucket="my-bucket",\n#     Key="data.json",\n#     Body=b'{"hello": "world"}',\n#     ContentType="application/json",\n#     Metadata={"author": "sara"}\n# )\nprint("with metadata")`, output: `with metadata` },
+        { title: "S3 pre-signed URL", code: `# url = s3.generate_presigned_url(\n#     "get_object",\n#     Params={"Bucket": "my-bucket", "Key": "file.pdf"},\n#     ExpiresIn=3600  # 1 hour\n# )\n# print(url)\nprint("temporary signed URL")`, output: `temporary signed URL` },
+        { title: "DynamoDB put item", code: `# ddb = boto3.resource("dynamodb")\n# table = ddb.Table("users")\n# table.put_item(Item={\n#     "id": "u1",\n#     "name": "Sara",\n#     "age": 30\n# })\nprint("item stored")`, output: `item stored` },
+        { title: "DynamoDB get item", code: `# response = table.get_item(Key={"id": "u1"})\n# item = response.get("Item")\n# print(item)\nprint("get by key pattern")`, output: `get by key pattern` },
+        { title: "DynamoDB query with condition", code: `# from boto3.dynamodb.conditions import Key\n# response = table.query(\n#     KeyConditionExpression=Key("id").eq("u1")\n# )\n# for item in response["Items"]:\n#     print(item)\nprint("query pattern")`, output: `query pattern` },
+        { title: "DynamoDB scan with filter", code: `# from boto3.dynamodb.conditions import Attr\n# response = table.scan(\n#     FilterExpression=Attr("age").gt(25)\n# )\nprint("scan pattern (avoid for large tables)")`, output: `scan pattern (avoid for large tables)` },
+        { title: "Lambda handler skeleton", code: `import json\ndef lambda_handler(event, context):\n    body = json.loads(event.get("body", "{}"))\n    return {\n        "statusCode": 200,\n        "headers": {"Content-Type": "application/json"},\n        "body": json.dumps({"message": "OK", "received": body})\n    }`, output: `# API Gateway compatible response` },
+        { title: "Lambda from S3 trigger", code: `def lambda_handler(event, context):\n    for record in event["Records"]:\n        bucket = record["s3"]["bucket"]["name"]\n        key = record["s3"]["object"]["key"]\n        print(f"processing s3://{bucket}/{key}")\n        # process the file...\n    return {"statusCode": 200}`, output: `# runs on S3 upload event` },
+        { title: "SQS send message", code: `# sqs = boto3.client("sqs")\n# sqs.send_message(\n#     QueueUrl="https://sqs.us-east-1.amazonaws.com/123/my-queue",\n#     MessageBody="Hello queue!"\n# )\nprint("message sent")`, output: `message sent` },
+        { title: "SQS receive and delete", code: `# response = sqs.receive_message(QueueUrl=url, MaxNumberOfMessages=10)\n# for msg in response.get("Messages", []):\n#     print(msg["Body"])\n#     sqs.delete_message(\n#         QueueUrl=url,\n#         ReceiptHandle=msg["ReceiptHandle"]\n#     )\nprint("SQS worker pattern")`, output: `SQS worker pattern` },
+        { title: "SNS publish topic", code: `# sns = boto3.client("sns")\n# sns.publish(\n#     TopicArn="arn:aws:sns:us-east-1:123:alerts",\n#     Subject="Alert!",\n#     Message="Server down"\n# )\nprint("SNS notification sent")`, output: `SNS notification sent` },
+        { title: "CloudWatch metric put", code: `# cw = boto3.client("cloudwatch")\n# cw.put_metric_data(\n#     Namespace="MyApp",\n#     MetricData=[{\n#         "MetricName": "OrdersProcessed",\n#         "Value": 42,\n#         "Unit": "Count"\n#     }]\n# )\nprint("custom metric sent")`, output: `custom metric sent` },
+        { title: "CloudWatch Logs write", code: `import logging\n# In Lambda, print() goes to CloudWatch automatically\n# For EC2/ECS, use CloudWatch Agent or:\nlogger = logging.getLogger()\nlogger.setLevel(logging.INFO)\nlogger.info("Processing started")`, output: `INFO:root:Processing started` },
+        { title: "Secrets Manager retrieve", code: `# secrets = boto3.client("secretsmanager")\n# response = secrets.get_secret_value(SecretId="prod/db")\n# import json\n# creds = json.loads(response["SecretString"])\n# db_url = f"postgres://{creds['user']}:{creds['pass']}@..."\nprint("secret retrieved")`, output: `secret retrieved` },
+        { title: "Parameter Store get", code: `# ssm = boto3.client("ssm")\n# response = ssm.get_parameter(\n#     Name="/myapp/prod/api_key",\n#     WithDecryption=True\n# )\n# key = response["Parameter"]["Value"]\nprint("parameter fetched")`, output: `parameter fetched` },
+        { title: "EC2 list instances", code: `# ec2 = boto3.client("ec2")\n# response = ec2.describe_instances()\n# for r in response["Reservations"]:\n#     for i in r["Instances"]:\n#         print(i["InstanceId"], i["State"]["Name"])\nprint("EC2 inventory pattern")`, output: `EC2 inventory pattern` }
+      ]
     }
   ]
 });
@@ -1558,6 +1849,33 @@ window.DP.registerModule({
         { title: "Dockerfile for Python", code: `FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD ["python", "main.py"]`, output: `# builds a container image` },
         { title: "GitHub Actions workflow", code: `name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: pip install -r requirements.txt\n      - run: pytest`, output: `# runs tests on every push` }
       ]
+    },
+    {
+      title: "DevOps with Python — Practical",
+      badge: "DevOps · 20+ examples",
+      notes: ["Practical DevOps: Docker, Kubernetes, Terraform, CI/CD pipelines from Python."],
+      examples: [
+        { title: "Simple Dockerfile", code: `FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nCMD ["python", "app.py"]`, output: `# minimal Python container` },
+        { title: "Multi-stage build (smaller image)", code: `# Build stage\nFROM python:3.12 AS builder\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --user -r requirements.txt\n\n# Runtime\nFROM python:3.12-slim\nWORKDIR /app\nCOPY --from=builder /root/.local /root/.local\nCOPY . .\nENV PATH=/root/.local/bin:$PATH\nCMD ["python", "app.py"]`, output: `# smaller final image` },
+        { title: "docker-compose.yml", code: `# docker-compose.yml\nversion: "3.9"\nservices:\n  web:\n    build: .\n    ports: ["8000:8000"]\n    depends_on: [db]\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: secret\n    volumes:\n      - db_data:/var/lib/postgresql/data\nvolumes:\n  db_data:`, output: `# multi-service stack` },
+        { title: "Health check endpoint", code: `from fastapi import FastAPI\napp = FastAPI()\n\n@app.get("/health")\ndef health():\n    return {"status": "ok", "version": "1.2.3"}\n# Docker: HEALTHCHECK CMD curl -f http://localhost:8000/health`, output: `# for LB probes` },
+        { title: "Kubernetes deployment YAML", code: `# deploy.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: myapp\nspec:\n  replicas: 3\n  selector:\n    matchLabels: {app: myapp}\n  template:\n    metadata:\n      labels: {app: myapp}\n    spec:\n      containers:\n      - name: myapp\n        image: myapp:1.0\n        ports:\n        - containerPort: 8000`, output: `# 3 replicas` },
+        { title: "Kubernetes Service", code: `apiVersion: v1\nkind: Service\nmetadata:\n  name: myapp\nspec:\n  selector: {app: myapp}\n  ports:\n  - port: 80\n    targetPort: 8000\n  type: LoadBalancer`, output: `# exposes deployment` },
+        { title: "K8s ConfigMap", code: `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: app-config\ndata:\n  DATABASE_URL: postgres://db:5432/app\n  LOG_LEVEL: INFO`, output: `# non-secret config` },
+        { title: "K8s Secret", code: `apiVersion: v1\nkind: Secret\nmetadata:\n  name: db-secret\ntype: Opaque\ndata:\n  password: c2VjcmV0    # base64 encoded`, output: `# encrypted at rest` },
+        { title: "kubectl commands", code: `kubectl apply -f deploy.yaml\nkubectl get pods\nkubectl logs -f pod-name\nkubectl describe pod pod-name\nkubectl exec -it pod-name -- bash\nkubectl rollout restart deployment/myapp`, output: `# daily K8s commands` },
+        { title: "Terraform basic module", code: `# main.tf\nresource "aws_s3_bucket" "data" {\n  bucket = "my-data-bucket"\n}\n\nresource "aws_lambda_function" "worker" {\n  function_name = "my-worker"\n  role          = aws_iam_role.lambda.arn\n  handler       = "app.handler"\n  runtime       = "python3.12"\n  filename      = "worker.zip"\n}`, output: `# infrastructure as code` },
+        { title: "Terraform commands", code: `terraform init      # download providers\nterraform plan      # preview changes\nterraform apply     # apply changes\nterraform destroy   # tear down`, output: `# IaC workflow` },
+        { title: "GitHub Actions with matrix", code: `name: Test\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        python: ["3.10", "3.11", "3.12"]\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with: {python-version: \${{ matrix.python }}}\n      - run: pip install -e .\n      - run: pytest`, output: `# runs on 3 Python versions` },
+        { title: "GitHub Actions deploy step", code: `name: Deploy\non:\n  push: {branches: [main]}\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: aws-actions/configure-aws-credentials@v4\n        with:\n          aws-access-key-id: \${{ secrets.AWS_KEY }}\n          aws-secret-access-key: \${{ secrets.AWS_SECRET }}\n          aws-region: us-east-1\n      - run: aws s3 sync ./build s3://my-bucket`, output: `# deploy on main push` },
+        { title: "Ansible playbook", code: `# playbook.yml\n- hosts: webservers\n  tasks:\n    - name: Install Python\n      apt: {name: python3, state: present}\n    - name: Copy app\n      copy: {src: ./app, dest: /var/www/}\n    - name: Restart service\n      systemd: {name: myapp, state: restarted}`, output: `# configure servers` },
+        { title: "Fabric — remote SSH tasks", code: `# from fabric import Connection\n# c = Connection(host="server.com", user="deploy")\n# c.run("uname -a")\n# c.put("app.tar.gz", "/tmp/")\n# c.run("cd /tmp && tar -xzf app.tar.gz")\nprint("remote deploy pattern")`, output: `remote deploy pattern` },
+        { title: "Environment-specific configs", code: `import os\nENV = os.getenv("APP_ENV", "dev")\nconfig = {\n    "dev": {"debug": True, "db": "sqlite:///dev.db"},\n    "prod": {"debug": False, "db": "postgres://prod"},\n}\nprint(config[ENV])`, output: `{'debug': True, 'db': 'sqlite:///dev.db'}` },
+        { title: "Prometheus metrics endpoint", code: `# from prometheus_client import Counter, generate_latest\n# requests_total = Counter("requests_total", "HTTP requests")\n# \n# @app.get("/metrics")\n# def metrics():\n#     return Response(generate_latest(), media_type="text/plain")\nprint("metrics endpoint")`, output: `metrics endpoint` },
+        { title: "Structured JSON logging (prod)", code: `import logging, json\nclass JsonFormatter(logging.Formatter):\n    def format(self, r):\n        return json.dumps({\n            "time": self.formatTime(r),\n            "level": r.levelname,\n            "msg": r.getMessage(),\n            "logger": r.name,\n        })\n\nprint("prod-ready log format")`, output: `prod-ready log format` },
+        { title: "Rolling deployment strategy", code: `# Kubernetes deployment spec:\nstrategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 1        # 1 extra pod during update\n    maxUnavailable: 0  # zero downtime`, output: `# zero downtime rollouts` },
+        { title: "Blue-green deploy pattern", code: `# 1. Deploy new version as 'green' alongside 'blue'\n# 2. Test green thoroughly\n# 3. Switch load balancer from blue -> green\n# 4. Keep blue running as instant rollback\n# 5. Delete blue once green is stable\nprint("blue-green strategy")`, output: `blue-green strategy` }
+      ]
     }
   ]
 });
@@ -1576,6 +1894,44 @@ window.DP.registerModule({
       examples: [
         { title: "Train a simple model", code: `from sklearn.linear_model import LinearRegression\nX = [[1], [2], [3]]\ny = [2, 4, 6]\nmodel = LinearRegression().fit(X, y)\nprint(round(model.predict([[4]])[0]))`, output: `8` },
         { title: "Call an LLM (OpenAI)", code: `from openai import OpenAI\nclient = OpenAI()\nresp = client.chat.completions.create(\n    model="gpt-4o-mini",\n    messages=[{"role": "user", "content": "Say hello"}])\nprint(resp.choices[0].message.content)`, output: `Hello! How can I help you today?` }
+      ]
+    },
+    {
+      title: "AI/ML — Practical Patterns",
+      badge: "AI/ML Deep",
+      notes: [
+        "Real-world AI/ML combines **data prep**, **modelling**, **evaluation** and **deployment**.",
+        "- NumPy/Pandas → prepare data.",
+        "- scikit-learn → classical ML (regression, classification, clustering).",
+        "- PyTorch / TensorFlow → deep learning.",
+        "- OpenAI / Bedrock / local LLMs → generative AI, RAG, agents.",
+        "Always **split data**, **evaluate** with metrics, and **version** models."
+      ],
+      examples: [
+        { title: "NumPy array basics", code: `import numpy as np\na = np.array([1, 2, 3, 4])\nprint(a.mean(), a.std().round(2))`, output: `2.5 1.12`, explanation: "NumPy arrays support vectorized math: mean/std run in C, far faster than Python loops." },
+        { title: "Pandas DataFrame quick view", code: `import pandas as pd\ndf = pd.DataFrame({"name":["A","B","C"],"score":[80,60,90]})\nprint(df.describe().loc["mean","score"])`, output: `76.66666666666667` },
+        { title: "Train/test split", code: `from sklearn.model_selection import train_test_split\nX = [[i] for i in range(10)]\ny = [i*2 for i in range(10)]\nXtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=1)\nprint(len(Xtr), len(Xte))`, output: `8 2`, explanation: "Never evaluate on training data. Split 80/20 so we can measure real generalisation." },
+        { title: "Logistic regression classifier", code: `from sklearn.linear_model import LogisticRegression\nX = [[0],[1],[2],[3],[4],[5]]\ny = [0,0,0,1,1,1]\nm = LogisticRegression().fit(X, y)\nprint(m.predict([[1.5],[4.5]]).tolist())`, output: `[0, 1]` },
+        { title: "Decision tree", code: `from sklearn.tree import DecisionTreeClassifier\nX = [[0,0],[1,1],[1,0],[0,1]]\ny = [0,1,1,0]\nm = DecisionTreeClassifier().fit(X, y)\nprint(m.predict([[1,1]])[0])`, output: `1`, explanation: "Trees split features by information gain — great for tabular data and easy to interpret." },
+        { title: "KMeans clustering", code: `from sklearn.cluster import KMeans\nX = [[1],[2],[10],[11]]\nkm = KMeans(n_clusters=2, n_init=10, random_state=0).fit(X)\nprint(sorted(km.labels_.tolist()))`, output: `[0, 0, 1, 1]` },
+        { title: "Standardize features", code: `from sklearn.preprocessing import StandardScaler\nimport numpy as np\nX = np.array([[10],[20],[30]])\nprint(StandardScaler().fit_transform(X).flatten().round(2).tolist())`, output: `[-1.22, 0.0, 1.22]`, explanation: "Scaling puts features on a common range so distance-based models (KNN, SVM, NN) train correctly." },
+        { title: "Accuracy metric", code: `from sklearn.metrics import accuracy_score\ny_true = [0,1,1,0]\ny_pred = [0,1,0,0]\nprint(accuracy_score(y_true, y_pred))`, output: `0.75` },
+        { title: "Confusion matrix", code: `from sklearn.metrics import confusion_matrix\nprint(confusion_matrix([0,1,1,0], [0,1,0,0]).tolist())`, output: `[[2, 0], [1, 1]]`, explanation: "Rows=true labels, cols=predictions. Bottom-left = false negatives (missed positives)." },
+        { title: "Cross validation", code: `from sklearn.linear_model import LogisticRegression\nfrom sklearn.model_selection import cross_val_score\nX = [[i] for i in range(20)]\ny = [0]*10 + [1]*10\nscores = cross_val_score(LogisticRegression(), X, y, cv=5)\nprint(round(scores.mean(), 2))`, output: `1.0` },
+        { title: "Save + load model (joblib)", code: `import joblib\nfrom sklearn.linear_model import LinearRegression\nm = LinearRegression().fit([[1],[2]], [2,4])\njoblib.dump(m, "/tmp/m.pkl")\nm2 = joblib.load("/tmp/m.pkl")\nprint(round(m2.predict([[3]])[0]))`, output: `6` },
+        { title: "PyTorch tensor", code: `import torch\nt = torch.tensor([1.0, 2.0, 3.0])\nprint((t * 2).tolist())`, output: `[2.0, 4.0, 6.0]` },
+        { title: "PyTorch simple neural net", code: `import torch, torch.nn as nn\nnet = nn.Sequential(nn.Linear(2, 1))\nx = torch.tensor([[1.0, 2.0]])\nprint(net(x).shape)`, output: `torch.Size([1, 1])`, explanation: "Sequential stacks layers. Linear(2,1) = weights connecting 2 inputs to 1 output neuron." },
+        { title: "TensorFlow / Keras model", code: `import tensorflow as tf\nmodel = tf.keras.Sequential([\n    tf.keras.layers.Dense(4, activation="relu"),\n    tf.keras.layers.Dense(1)\n])\nmodel.compile(optimizer="adam", loss="mse")\nprint("model ready")`, output: `model ready` },
+        { title: "Image with OpenCV", code: `import cv2, numpy as np\nimg = np.zeros((3,3), dtype="uint8")\nprint(img.shape)`, output: `(3, 3)` },
+        { title: "Tokenize text (NLTK)", code: `from nltk.tokenize import word_tokenize\nprint(word_tokenize("AI is fun!"))`, output: `['AI', 'is', 'fun', '!']` },
+        { title: "spaCy named entities", code: `import spacy\nnlp = spacy.load("en_core_web_sm")\ndoc = nlp("Apple opened an office in Bengaluru.")\nprint([(e.text, e.label_) for e in doc.ents])`, output: `[('Apple', 'ORG'), ('Bengaluru', 'GPE')]` },
+        { title: "Sentence embedding", code: `from sentence_transformers import SentenceTransformer\nm = SentenceTransformer("all-MiniLM-L6-v2")\nvec = m.encode("hello world")\nprint(len(vec))`, output: `384`, explanation: "An embedding is a fixed-length vector that captures meaning. Similar sentences → similar vectors." },
+        { title: "Cosine similarity", code: `import numpy as np\ndef cos(a, b):\n    return float(np.dot(a,b) / (np.linalg.norm(a)*np.linalg.norm(b)))\nprint(round(cos(np.array([1,0]), np.array([1,1])), 3))`, output: `0.707` },
+        { title: "Simple RAG flow", code: `# 1. Chunk documents\n# 2. Embed chunks with an embedding model\n# 3. Store vectors in a vector DB (FAISS/Pinecone/Chroma)\n# 4. Embed user query -> nearest chunks\n# 5. Pass chunks + question to the LLM\nprint("RAG pipeline")`, output: `RAG pipeline`, explanation: "RAG = Retrieval Augmented Generation. It grounds LLMs on your private data instead of guessing." },
+        { title: "OpenAI streaming", code: `from openai import OpenAI\nclient = OpenAI()\nstream = client.chat.completions.create(\n    model="gpt-4o-mini",\n    messages=[{"role":"user","content":"count 1 2 3"}],\n    stream=True)\nfor chunk in stream:\n    print(chunk.choices[0].delta.content or "", end="")`, output: `1 2 3` },
+        { title: "LangChain prompt template", code: `from langchain_core.prompts import PromptTemplate\np = PromptTemplate.from_template("Translate to French: {text}")\nprint(p.format(text="hello"))`, output: `Translate to French: hello` },
+        { title: "Bedrock invoke (AWS)", code: `import boto3, json\nbr = boto3.client("bedrock-runtime", region_name="us-east-1")\nresp = br.invoke_model(\n    modelId="anthropic.claude-3-haiku-20240307-v1:0",\n    body=json.dumps({"messages":[{"role":"user","content":"hi"}], "max_tokens":10, "anthropic_version":"bedrock-2023-05-31"}))\nprint("bedrock called")`, output: `bedrock called` },
+        { title: "Data leakage warning", code: `# WRONG: scaling before splitting leaks test stats\n# from sklearn.preprocessing import StandardScaler\n# X_scaled = StandardScaler().fit_transform(X)\n# X_tr, X_te = train_test_split(X_scaled, ...)\n\n# RIGHT: split first, then fit scaler only on train\nprint("split -> fit on train -> transform test")`, output: `split -> fit on train -> transform test`, explanation: "Fitting any preprocessing on the whole dataset lets test information leak into training and inflates scores." }
       ]
     }
   ]
@@ -1603,6 +1959,44 @@ window.DP.registerModule({
         { title: "Docstring", code: `def area(r: float) -> float:\n    """Return the area of a circle with radius r."""\n    return 3.14159 * r ** 2\n\nprint(area.__doc__)`, output: `Return the area of a circle with radius r.` },
         { title: "Read a secret from env", code: `import os\napi_key = os.environ.get("API_KEY", "not-set")\nprint(api_key)`, output: `not-set` }
       ]
+    },
+    {
+      title: "Best Practices — Deep Dive",
+      badge: "Production Ready",
+      notes: [
+        "Senior engineers ship code that is **readable**, **testable**, **observable** and **secure**.",
+        "- **Style**: PEP 8 + Black + isort + Ruff/Flake8.",
+        "- **Correctness**: type hints + mypy + tests (pytest).",
+        "- **Reliability**: logging, retries, timeouts, error boundaries.",
+        "- **Security**: secrets in env vars / KMS, validated inputs, least privilege.",
+        "- **Delivery**: pinned deps, CI, semantic versioning, changelogs."
+      ],
+      examples: [
+        { title: "PEP 8 naming", code: `# Good: snake_case for variables/functions, CapWords for classes\nuser_name = "Ravi"\ndef total_price(items): return sum(items)\nclass OrderItem: pass\nprint(user_name, total_price([1,2,3]))`, output: `Ravi 6` },
+        { title: "Type hints for lists/dicts", code: `from typing import Iterable\ndef total(nums: Iterable[float]) -> float:\n    return sum(nums)\nprint(total([1.5, 2.5]))`, output: `4.0`, explanation: "Type hints are documentation the IDE and mypy can verify. Zero runtime cost." },
+        { title: "Dataclass over dict", code: `from dataclasses import dataclass\n@dataclass\nclass User:\n    id: int\n    name: str\nu = User(1, "Neha")\nprint(u.name)`, output: `Neha`, explanation: "Dataclasses give you a real type, autocomplete and equality — safer than passing dicts around." },
+        { title: "f-strings, not %/format", code: `name, age = "Ravi", 30\nprint(f"{name} is {age}")   # modern\n# print("%s is %d" % (name, age))  # legacy`, output: `Ravi is 30` },
+        { title: "Logging over print", code: `import logging\nlogging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")\nlog = logging.getLogger("app")\nlog.info("user %s logged in", "ravi")`, output: `INFO user ravi logged in`, explanation: "Logging gives levels, formatting, and lets you turn debug output on in production without code changes." },
+        { title: "Never log secrets", code: `import logging\nlog = logging.getLogger("app")\ntoken = "abcd1234"\nlog.info("auth ok user=%s token=%s", "ravi", "***")  # mask it`, output: `# never write raw tokens/passwords/PII to logs` },
+        { title: "Env vars with dotenv", code: `# .env  ->  DB_URL=postgres://...\nfrom dotenv import load_dotenv\nimport os\nload_dotenv()\nprint(bool(os.getenv("DB_URL")))`, output: `True` },
+        { title: "Config as a class", code: `import os\nclass Config:\n    DEBUG = os.getenv("DEBUG", "0") == "1"\n    DB_URL = os.getenv("DB_URL", "sqlite:///dev.db")\nprint(Config.DEBUG)`, output: `False` },
+        { title: "Guard clauses over nesting", code: `def discount(user):\n    if user is None: return 0\n    if not user.get("premium"): return 0\n    return 20\nprint(discount({"premium": True}))`, output: `20`, explanation: "Return early on invalid cases. The 'happy path' stays flat and easy to read." },
+        { title: "Specific exception handling", code: `try:\n    int("abc")\nexcept ValueError as e:\n    print("bad number:", e)`, output: `bad number: invalid literal for int() with base 10: 'abc'`, explanation: "Catch only what you can handle. Bare `except:` hides real bugs." },
+        { title: "Retry with backoff", code: `import time\ndef call():\n    raise TimeoutError("net")\nfor attempt in range(3):\n    try:\n        call(); break\n    except TimeoutError:\n        time.sleep(0.01 * (2 ** attempt))\nelse:\n    print("giving up")`, output: `giving up` },
+        { title: "Timeouts on network calls", code: `import requests\ntry:\n    r = requests.get("https://example.com", timeout=(3, 5))  # (connect, read)\n    print(r.status_code)\nexcept requests.Timeout:\n    print("timeout")`, output: `200`, explanation: "Never call the network without a timeout — one hung call can freeze your whole service." },
+        { title: "Use context managers", code: `# Always closes the file, even on exception\nwith open("/tmp/x.txt", "w") as f:\n    f.write("hi")\nprint("closed automatically")`, output: `closed automatically` },
+        { title: "pytest test", code: `# test_math.py\ndef add(a, b): return a + b\ndef test_add():\n    assert add(2, 3) == 5\n\n# $ pytest -q\n# .  1 passed`, output: `1 passed` },
+        { title: "Fixture + parametrize", code: `import pytest\n@pytest.mark.parametrize("a,b,exp", [(1,2,3),(0,0,0)])\ndef test_add(a, b, exp):\n    assert a + b == exp`, output: `2 passed` },
+        { title: "Mock external call", code: `from unittest.mock import patch\nimport requests\ndef status():\n    return requests.get("http://x").status_code\nwith patch("requests.get") as m:\n    m.return_value.status_code = 200\n    print(status())`, output: `200`, explanation: "Mocks make tests fast and deterministic — no real HTTP calls, no flakiness." },
+        { title: "Coverage report", code: `# pip install coverage\n# coverage run -m pytest\n# coverage report -m\nprint("aim for >80% on business logic")`, output: `aim for >80% on business logic` },
+        { title: "Lock dependencies", code: `# requirements.txt  ->  exact pins\n# fastapi==0.115.0\n# uvicorn==0.30.6\n# Or use uv / poetry / pip-tools to generate lockfiles.\nprint("pin versions in prod")`, output: `pin versions in prod`, explanation: "Unpinned deps mean 'works today, breaks tomorrow when a transitive dep releases 2.0'." },
+        { title: "Virtual environment", code: `# python -m venv .venv\n# source .venv/bin/activate    (mac/linux)\n# .venv\\\\Scripts\\\\activate     (windows)\n# pip install -r requirements.txt\nprint("isolate deps per project")`, output: `isolate deps per project` },
+        { title: "Profile slow code", code: `import cProfile, pstats, io\ndef work():\n    return sum(range(100_000))\npr = cProfile.Profile()\npr.enable(); work(); pr.disable()\ns = io.StringIO()\npstats.Stats(pr, stream=s).sort_stats("cumulative").print_stats(1)\nprint("profiled")`, output: `profiled` },
+        { title: "Measure with timeit", code: `import timeit\nt = timeit.timeit("sum(range(1000))", number=100)\nprint(t < 1)`, output: `True` },
+        { title: "Docstring style", code: `def add(a: int, b: int) -> int:\n    """Return the sum of two integers.\n\n    Args:\n        a: first number\n        b: second number\n    Returns:\n        int: a + b\n    """\n    return a + b\nprint(add.__doc__.splitlines()[0])`, output: `Return the sum of two integers.` },
+        { title: "Small functions", code: `# BAD: 200-line function doing 5 things\n# GOOD: split into small, named, testable pieces\ndef price(items): return sum(i["p"] for i in items)\ndef tax(t): return round(t * 0.18, 2)\ndef total(items): return price(items) + tax(price(items))\nprint(total([{"p":100},{"p":50}]))`, output: `177.0` },
+        { title: "Fail loud, fail fast", code: `def divide(a, b):\n    if b == 0:\n        raise ValueError("b must not be zero")\n    return a / b\ntry:\n    divide(1, 0)\nexcept ValueError as e:\n    print("caught:", e)`, output: `caught: b must not be zero`, explanation: "Validate inputs at the boundary. Fail with a clear error instead of returning None and confusing callers later." }
+      ]
     }
   ]
 });
@@ -1628,6 +2022,39 @@ window.DP.registerModule({
         { title: "ATM Simulator (core loop)", code: `balance = 1000\nwhile True:\n    choice = input("1)Balance 2)Deposit 3)Exit: ")\n    if choice == "1":\n        print("Balance:", balance)\n    elif choice == "2":\n        balance += int(input("Amount: "))\n    else:\n        print("Goodbye")\n        break`, output: `1)Balance 2)Deposit 3)Exit: 1\nBalance: 1000` },
         { title: "Student record (OOP)", code: `class Student:\n    def __init__(self, name, marks):\n        self.name = name\n        self.marks = marks\n    def grade(self):\n        return "Pass" if self.marks >= 40 else "Fail"\n\ns = Student("Ravi", 75)\nprint(s.name, s.grade())`, output: `Ravi Pass` },
         { title: "Banking deposit/withdraw", code: `class Account:\n    def __init__(self, balance=0):\n        self.balance = balance\n    def deposit(self, amt):\n        self.balance += amt\n    def withdraw(self, amt):\n        if amt > self.balance:\n            return "Insufficient funds"\n        self.balance -= amt\n        return self.balance\n\na = Account(500)\na.deposit(200)\nprint(a.withdraw(300))`, output: `400` }
+      ]
+    },
+    {
+      title: "Real-World Project Templates",
+      badge: "Capstone",
+      notes: [
+        "These starter templates show the **shape** of real applications: data models, main loop, storage, error handling.",
+        "Extend each project with: database, authentication, tests, logging, and a REST API.",
+        "Progression: **CLI → Backend API → Full-stack + AI → Cloud deployment.**"
+      ],
+      examples: [
+        { title: "Library management (add/borrow)", code: `class Library:\n    def __init__(self):\n        self.books = {}\n    def add(self, isbn, title, copies=1):\n        self.books[isbn] = {"title": title, "copies": copies}\n    def borrow(self, isbn):\n        b = self.books.get(isbn)\n        if not b or b["copies"] == 0: return "unavailable"\n        b["copies"] -= 1\n        return f"borrowed {b['title']}"\n\nlib = Library()\nlib.add("978-1", "Python 101", 2)\nprint(lib.borrow("978-1"))`, output: `borrowed Python 101`, explanation: "Dict as an in-memory database. Swap it later for SQLite/Postgres without changing the class API." },
+        { title: "Inventory tracker", code: `stock = {"apple": 10, "banana": 5}\ndef sell(item, qty):\n    if stock.get(item, 0) < qty:\n        return "out of stock"\n    stock[item] -= qty\n    return stock[item]\n\nprint(sell("apple", 3))`, output: `7` },
+        { title: "Employee HR record", code: `from dataclasses import dataclass, field\n@dataclass\nclass Employee:\n    id: int\n    name: str\n    salary: float\n    skills: list = field(default_factory=list)\n\ne = Employee(1, "Anita", 90000, ["python","sql"])\nprint(e.name, len(e.skills))`, output: `Anita 2` },
+        { title: "Student result system", code: `def grade(marks):\n    if marks >= 90: return "A"\n    if marks >= 75: return "B"\n    if marks >= 60: return "C"\n    if marks >= 40: return "D"\n    return "F"\nprint([grade(m) for m in [92, 68, 33]])`, output: `['A', 'C', 'F']` },
+        { title: "E-commerce cart total", code: `cart = [\n    {"name":"pen","price":10,"qty":2},\n    {"name":"book","price":250,"qty":1}\n]\ntotal = sum(i["price"]*i["qty"] for i in cart)\ngst = round(total * 0.18, 2)\nprint("total:", total + gst)`, output: `total: 318.6`, explanation: "Real carts do the same: iterate items, compute subtotal, add taxes and shipping." },
+        { title: "Food delivery order flow", code: `class Order:\n    STATES = ["placed","cooking","out_for_delivery","delivered"]\n    def __init__(self):\n        self.state = "placed"\n    def next(self):\n        i = self.STATES.index(self.state)\n        if i < len(self.STATES) - 1:\n            self.state = self.STATES[i+1]\n\no = Order(); o.next(); o.next()\nprint(o.state)`, output: `out_for_delivery` },
+        { title: "Movie ticket booking", code: `seats = [["_"]*5 for _ in range(3)]\ndef book(r, c):\n    if seats[r][c] == "X": return "already booked"\n    seats[r][c] = "X"\n    return "confirmed"\n\nprint(book(0, 2))\nprint(seats[0])`, output: `confirmed\n['_', '_', 'X', '_', '_']` },
+        { title: "FastAPI REST endpoint", code: `from fastapi import FastAPI\napp = FastAPI()\n\n@app.get("/users/{uid}")\ndef get_user(uid: int):\n    return {"id": uid, "name": "Ravi"}\n\n# uvicorn main:app --reload`, output: `{"id": 1, "name": "Ravi"}`, explanation: "FastAPI auto-generates OpenAPI docs and validates types — perfect for production APIs." },
+        { title: "Flask REST endpoint", code: `from flask import Flask, jsonify\napp = Flask(__name__)\n\n@app.get("/health")\ndef health():\n    return jsonify(status="ok")\n\n# flask --app main run`, output: `{"status": "ok"}` },
+        { title: "SQLAlchemy user model", code: `from sqlalchemy import Column, Integer, String\nfrom sqlalchemy.orm import declarative_base\nBase = declarative_base()\n\nclass User(Base):\n    __tablename__ = "users"\n    id = Column(Integer, primary_key=True)\n    name = Column(String(50))\n\nprint(User.__tablename__)`, output: `users` },
+        { title: "JWT authentication", code: `import jwt, datetime\nsecret = "s3cr3t"\npayload = {"sub":"u1", "exp": datetime.datetime.utcnow()+datetime.timedelta(hours=1)}\ntoken = jwt.encode(payload, secret, algorithm="HS256")\nprint(bool(jwt.decode(token, secret, algorithms=["HS256"])))`, output: `True`, explanation: "Server signs a token with a secret; client sends it back on every request; server verifies. Stateless auth." },
+        { title: "Password hashing", code: `import hashlib, os\ndef hash_pwd(p):\n    salt = os.urandom(16)\n    h = hashlib.pbkdf2_hmac("sha256", p.encode(), salt, 100_000)\n    return salt.hex() + ":" + h.hex()\n\nprint(len(hash_pwd("mypass")) > 50)`, output: `True` },
+        { title: "AI chatbot skeleton", code: `def chat(history, user_msg):\n    history.append({"role":"user","content":user_msg})\n    # send history to LLM, get reply\n    reply = f"You said: {user_msg}"\n    history.append({"role":"assistant","content":reply})\n    return reply\n\nh = []\nprint(chat(h, "hi"))`, output: `You said: hi` },
+        { title: "RAG document search", code: `# 1. Load docs -> split into chunks\n# 2. Embed chunks (sentence-transformers / OpenAI)\n# 3. Store in FAISS/Chroma/Pinecone\n# 4. Retrieve top-k for user query\n# 5. Send retrieved chunks + question to LLM\nprint("private-data QA")`, output: `private-data QA`, explanation: "RAG is how companies build ChatGPT-style bots over their own PDFs, wiki and code." },
+        { title: "Face recognition attendance (idea)", code: `# 1. Register: capture face -> face_encoding (face_recognition lib)\n# 2. Store encodings + employee ID in DB\n# 3. At entry: capture face -> compare against stored encodings\n# 4. If match & confidence high -> mark present in attendance table\nprint("face-based attendance")`, output: `face-based attendance` },
+        { title: "Web scraper starter", code: `import requests\nfrom bs4 import BeautifulSoup\nhtml = "<h1>Hello</h1><p>World</p>"\nsoup = BeautifulSoup(html, "html.parser")\nprint(soup.h1.text, soup.p.text)`, output: `Hello World` },
+        { title: "CSV report generator", code: `import csv\nrows = [{"name":"A","score":80},{"name":"B","score":90}]\nwith open("/tmp/report.csv","w",newline="") as f:\n    w = csv.DictWriter(f, fieldnames=["name","score"])\n    w.writeheader(); w.writerows(rows)\nprint("wrote /tmp/report.csv")`, output: `wrote /tmp/report.csv` },
+        { title: "Send email (SMTP)", code: `# import smtplib\n# from email.message import EmailMessage\n# msg = EmailMessage()\n# msg["From"], msg["To"], msg["Subject"] = "a@x", "b@y", "Hi"\n# msg.set_content("body")\n# with smtplib.SMTP("smtp.gmail.com", 587) as s:\n#     s.starttls(); s.login(user, pwd); s.send_message(msg)\nprint("email sent")`, output: `email sent` },
+        { title: "Scheduled job (APScheduler)", code: `# from apscheduler.schedulers.blocking import BlockingScheduler\n# sched = BlockingScheduler()\n# @sched.scheduled_job("interval", minutes=5)\n# def sync(): print("running sync...")\n# sched.start()\nprint("cron-like jobs in Python")`, output: `cron-like jobs in Python` },
+        { title: "AWS Lambda handler", code: `import json\ndef lambda_handler(event, context):\n    name = event.get("name", "world")\n    return {"statusCode": 200, "body": json.dumps({"msg": f"hello {name}"})}\n\nprint(lambda_handler({"name":"Ravi"}, None)["body"])`, output: `{"msg": "hello Ravi"}`, explanation: "Serverless: no server to manage, pay per invocation. Great for APIs, webhooks and cron jobs." },
+        { title: "Dockerfile for FastAPI", code: `# Dockerfile\n# FROM python:3.12-slim\n# WORKDIR /app\n# COPY requirements.txt .\n# RUN pip install --no-cache-dir -r requirements.txt\n# COPY . .\n# CMD ["uvicorn","main:app","--host","0.0.0.0","--port","8000"]\nprint("containerize your app")`, output: `containerize your app` },
+        { title: "Full-stack architecture", code: `# React (frontend)\n#     |  HTTPS + JWT\n# FastAPI (backend)\n#     |  SQLAlchemy\n# PostgreSQL (data) + Redis (cache) + S3 (files)\n#     |  Docker + GitHub Actions\n# AWS ECS / EKS / Lambda (deploy)\nprint("modern full-stack Python app")`, output: `modern full-stack Python app`, explanation: "Every senior Python role expects you to reason about this end-to-end picture, not just individual files." }
       ]
     }
   ]

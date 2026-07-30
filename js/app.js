@@ -229,11 +229,12 @@
     wrap.appendChild(out);
 
     // Explanation block — step-by-step for non-programmers
-    if (ex.explanation) {
+    var explContent = ex.explanation || (window.DPExplainer ? window.DPExplainer.explain(code, ex.title) : null);
+    if (explContent) {
       var explWrap = el("div", "explanation");
       var explToggle = el("button", "expl-toggle", "💡 " + T("explanation"));
       var explBody = el("div", "expl-body");
-      explBody.innerHTML = renderNotes(ex.explanation);
+      explBody.innerHTML = renderNotes(explContent);
       explBody.style.display = "none";
       explToggle.addEventListener("click", function () {
         var show = explBody.style.display === "none";
@@ -539,5 +540,29 @@
 
     window.addEventListener("hashchange", route);
     route();
+
+    // Scroll-reveal animation (IntersectionObserver)
+    if (window.IntersectionObserver) {
+      var revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
+      // Observe new elements after each route change
+      var oldRoute = route;
+      route = function () {
+        oldRoute();
+        setTimeout(function () {
+          document.querySelectorAll(".example, .concept, .mod-card").forEach(function (el) {
+            el.classList.add("reveal");
+            revealObserver.observe(el);
+          });
+        }, 50);
+      };
+      route(); // Initial
+    }
   }
 })();

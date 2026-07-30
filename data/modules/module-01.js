@@ -3,7 +3,7 @@ window.DP.registerModule({
   id: 1,
   title: "Introduction to Python",
   icon: "🐍",
-  summary: "What Python is, its history and features, where it is used, how to install and run it, and your very first programs — comments, keywords, identifiers and variables.",
+  summary: "What Python is, its history and features, where it is used, how to install and run it, and your first programs — comments, keywords, identifiers and variables (with 55+ variable examples).",
   concepts: [
     {
       title: "What is Python?",
@@ -19,7 +19,7 @@ window.DP.registerModule({
       examples: [
         { title: "Your first line of Python", code: `print("Hello, Python!")`, output: `Hello, Python!` },
         { title: "Python is readable", code: `for name in ["Arjun", "Meera", "Ravi"]:\n    print("Hi", name)`, output: `Hi Arjun\nHi Meera\nHi Ravi` },
-        { title: "No type declarations needed", code: `x = 10        # int\ny = 3.14      # float\nz = "text"    # str\nprint(x, y, z)`, output: `10 3.14 text` },
+        { title: "No type declarations needed", code: `x = 10\ny = 3.14\nz = "text"\nprint(x, y, z)`, output: `10 3.14 text` },
         { title: "Check the Python version", code: `import sys\nprint(sys.version_info.major, sys.version_info.minor)`, output: `3 12` },
         { title: "The Zen of Python", code: `import this  # prints Python's guiding principles`, output: `The Zen of Python, by Tim Peters\nBeautiful is better than ugly...` }
       ]
@@ -39,8 +39,8 @@ window.DP.registerModule({
       ],
       examples: [
         { title: "Python 3 print is a function", code: `print("Python 3 uses print() with parentheses")`, output: `Python 3 uses print() with parentheses` },
-        { title: "Python 3 division returns float", code: `print(7 / 2)   # true division`, output: `3.5` },
-        { title: "Unicode strings by default", code: `text = "नमस्ते"   # Python 3 strings are Unicode\nprint(text)`, output: `नमस्ते` },
+        { title: "Python 3 division returns float", code: `print(7 / 2)`, output: `3.5` },
+        { title: "Unicode strings by default", code: `text = "नमस्ते"\nprint(text)`, output: `नमस्ते` },
         { title: "f-strings (added in Python 3.6)", code: `year = 1991\nprint(f"Python was released in {year}")`, output: `Python was released in 1991` }
       ]
     },
@@ -117,7 +117,7 @@ window.DP.registerModule({
         "There are two main ways to run Python:",
         "- **Script mode** — save code in a `.py` file and run `python file.py`.",
         "- **Interactive mode (REPL)** — type `python` in a terminal to open the Read-Eval-Print-Loop and run code line by line.",
-        "> The REPL is perfect for quickly testing small snippets. Type `exit()` to leave it."
+        "> Tip: use the **Workspace** in this app to run Python right in your browser!"
       ],
       examples: [
         { title: "Run a script file", code: `# save as hello.py, then run:  python hello.py\nprint("Running from a file!")`, output: `Running from a file!` },
@@ -132,14 +132,15 @@ window.DP.registerModule({
       badge: "Hands-on",
       notes: [
         "The traditional first program prints a greeting. `print()` sends text to the screen (standard output).",
-        "Notice: no semicolons, no `main()` function required, and indentation matters."
+        "Notice: no semicolons, no `main()` function required, and indentation matters. **Press ▶ Run on any example to try it live.**"
       ],
       examples: [
         { title: "Hello World", code: `print("Hello, World!")`, output: `Hello, World!` },
         { title: "Greeting with a name", code: `name = "Arjun"\nprint("Hello,", name)`, output: `Hello, Arjun` },
         { title: "Multi-line output", code: `print("Line 1")\nprint("Line 2")\nprint("Line 3")`, output: `Line 1\nLine 2\nLine 3` },
         { title: "Print numbers and text together", code: `print("You have", 3, "new messages")`, output: `You have 3 new messages` },
-        { title: "A tiny profile", code: `print("Name : Meera")\nprint("Age  : 24")\nprint("City : Pune")`, output: `Name : Meera\nAge  : 24\nCity : Pune` }
+        { title: "A tiny profile", code: `print("Name : Meera")\nprint("Age  : 24")\nprint("City : Pune")`, output: `Name : Meera\nAge  : 24\nCity : Pune` },
+        { title: "Print a simple banner", code: `print("*" * 20)\nprint("  CODE ORIGIN.AI  ")\nprint("*" * 20)`, output: `********************\n  CODE ORIGIN.AI  \n********************` }
       ]
     },
 
@@ -173,7 +174,6 @@ window.DP.registerModule({
         { title: "List all keywords", code: `import keyword\nprint(keyword.kwlist)`, output: `['False', 'None', 'True', 'and', 'as', ...]` },
         { title: "Count the keywords", code: `import keyword\nprint(len(keyword.kwlist))`, output: `35` },
         { title: "Check if a word is a keyword", code: `import keyword\nprint(keyword.iskeyword("for"))\nprint(keyword.iskeyword("data"))`, output: `True\nFalse` },
-        { title: "Keywords are case-sensitive", code: `True = 5  # error: 'True' is a keyword\n# But 'true' (lowercase) would be a valid name`, output: `SyntaxError: cannot assign to True` },
         { title: "Soft keywords: match / case", code: `command = "start"\nmatch command:\n    case "start":\n        print("Starting...")\n    case _:\n        print("Unknown")`, output: `Starting...` }
       ]
     },
@@ -193,19 +193,18 @@ window.DP.registerModule({
       examples: [
         { title: "Valid identifiers", code: `student_name = "Ravi"\nage2 = 20\n_total = 500\nprint(student_name, age2, _total)`, output: `Ravi 20 500` },
         { title: "Case sensitivity", code: `age = 25\nAge = 30\nprint(age, Age)`, output: `25 30` },
-        { title: "Invalid: starts with a digit", code: `2name = "x"  # SyntaxError`, output: `SyntaxError: invalid syntax` },
-        { title: "Check a name is valid with isidentifier()", code: `print("data".isidentifier())\nprint("2data".isidentifier())`, output: `True\nFalse` },
-        { title: "Naming conventions", code: `MAX_SPEED = 120      # constant\nfirst_name = "Sara"  # variable\nclass BankAccount:   # class\n    pass\nprint(MAX_SPEED, first_name)`, output: `120 Sara` }
+        { title: "Check a name with isidentifier()", code: `print("data".isidentifier())\nprint("2data".isidentifier())`, output: `True\nFalse` },
+        { title: "Naming conventions", code: `MAX_SPEED = 120      # constant\nfirst_name = "Sara"  # variable\nprint(MAX_SPEED, first_name)`, output: `120 Sara` }
       ]
     },
 
     {
       title: "Python Variables",
-      badge: "Core",
+      badge: "Core · 55+ examples",
       notes: [
         "A **variable** is a name that refers to a value stored in memory. In Python you create one just by assigning with `=` — no type declaration needed.",
         "Variables can be **reassigned** to a value of any type, and multiple variables can be assigned at once.",
-        "> Think of a variable as a label attached to a value, not a fixed box."
+        "> Think of a variable as a label attached to a value, not a fixed box. **Hit ▶ Run to execute any example live.**"
       ],
       examples: [
         { title: "Basic assignment (from the syllabus)", code: `name = "Arjun"\nage = 25\nsalary = 45000.50\n\nprint(name)\nprint(age)\nprint(salary)`, output: `Arjun\n25\n45000.5` },
@@ -214,12 +213,57 @@ window.DP.registerModule({
         { title: "Multiple assignment on one line", code: `a, b, c = 1, 2, 3\nprint(a, b, c)`, output: `1 2 3` },
         { title: "Assign the same value to many", code: `x = y = z = 100\nprint(x, y, z)`, output: `100 100 100` },
         { title: "Swap two variables", code: `a, b = 5, 10\na, b = b, a\nprint(a, b)`, output: `10 5` },
+        { title: "Swap three variables", code: `a, b, c = 1, 2, 3\na, b, c = c, a, b\nprint(a, b, c)`, output: `3 1 2` },
         { title: "Using variables in arithmetic", code: `price = 250\nquantity = 4\ntotal = price * quantity\nprint("Total:", total)`, output: `Total: 1000` },
         { title: "Combine text variables", code: `first = "John"\nlast = "Doe"\nfull = first + " " + last\nprint(full)`, output: `John Doe` },
         { title: "Constants (by convention)", code: `PI = 3.14159\nradius = 5\narea = PI * radius ** 2\nprint("Area:", area)`, output: `Area: 78.53975` },
-        { title: "Deleting a variable", code: `temp = 99\nprint(temp)\ndel temp\n# print(temp) would now raise NameError`, output: `99` },
-        { title: "Check identity vs equality", code: `a = 256\nb = 256\nprint(a == b)   # same value\nprint(a is b)   # small ints are cached`, output: `True\nTrue` },
-        { title: "Underscore in large numbers", code: `population = 1_400_000_000\nprint(population)`, output: `1400000000` }
+        { title: "Deleting a variable", code: `temp = 99\nprint(temp)\ndel temp\nprint("deleted")`, output: `99\ndeleted` },
+        { title: "Integer variable", code: `count = 42\nprint(count, type(count))`, output: `42 <class 'int'>` },
+        { title: "Float variable", code: `pi = 3.14\nprint(pi, type(pi))`, output: `3.14 <class 'float'>` },
+        { title: "String variable", code: `city = "Bengaluru"\nprint(city, type(city))`, output: `Bengaluru <class 'str'>` },
+        { title: "Boolean variable", code: `is_active = True\nprint(is_active, type(is_active))`, output: `True <class 'bool'>` },
+        { title: "None value", code: `result = None\nprint(result, type(result))`, output: `None <class 'NoneType'>` },
+        { title: "Complex number variable", code: `z = 2 + 3j\nprint(z, type(z))`, output: `(2+3j) <class 'complex'>` },
+        { title: "List variable", code: `nums = [1, 2, 3]\nprint(nums, type(nums))`, output: `[1, 2, 3] <class 'list'>` },
+        { title: "Tuple variable", code: `point = (4, 5)\nprint(point, type(point))`, output: `(4, 5) <class 'tuple'>` },
+        { title: "Dictionary variable", code: `user = {"id": 1, "name": "Sara"}\nprint(user["name"])`, output: `Sara` },
+        { title: "Set variable", code: `unique = {1, 2, 2, 3}\nprint(unique)`, output: `{1, 2, 3}` },
+        { title: "Underscore in large numbers", code: `population = 1_400_000_000\nprint(population)`, output: `1400000000` },
+        { title: "Augmented assignment +=", code: `x = 10\nx += 5\nprint(x)`, output: `15` },
+        { title: "Augmented assignment -=", code: `x = 10\nx -= 3\nprint(x)`, output: `7` },
+        { title: "Augmented assignment *=", code: `x = 4\nx *= 3\nprint(x)`, output: `12` },
+        { title: "Augmented assignment /=", code: `x = 20\nx /= 4\nprint(x)`, output: `5.0` },
+        { title: "Augmented assignment //=", code: `x = 17\nx //= 5\nprint(x)`, output: `3` },
+        { title: "Augmented assignment %=", code: `x = 17\nx %= 5\nprint(x)`, output: `2` },
+        { title: "Augmented assignment **=", code: `x = 2\nx **= 5\nprint(x)`, output: `32` },
+        { title: "Assign result of an expression", code: `total = (10 + 20) * 2\nprint(total)`, output: `60` },
+        { title: "Unpack from a list", code: `r, g, b = [255, 128, 0]\nprint(r, g, b)`, output: `255 128 0` },
+        { title: "Extended unpacking with *", code: `first, *rest = [1, 2, 3, 4, 5]\nprint(first, rest)`, output: `1 [2, 3, 4, 5]` },
+        { title: "Unpack middle with *", code: `first, *mid, last = [1, 2, 3, 4, 5]\nprint(first, mid, last)`, output: `1 [2, 3, 4] 5` },
+        { title: "Variable inside an f-string", code: `name = "Ravi"\nscore = 90\nprint(f"{name} scored {score}")`, output: `Ravi scored 90` },
+        { title: "Number to string with str()", code: `age = 25\nmsg = "Age: " + str(age)\nprint(msg)`, output: `Age: 25` },
+        { title: "Counter in a loop", code: `count = 0\nfor _ in range(5):\n    count += 1\nprint(count)`, output: `5` },
+        { title: "Accumulate a sum", code: `total = 0\nfor n in [10, 20, 30]:\n    total += n\nprint(total)`, output: `60` },
+        { title: "Build a string in a loop", code: `s = ""\nfor ch in "abc":\n    s += ch + "-"\nprint(s)`, output: `a-b-c-` },
+        { title: "Temperature conversion", code: `celsius = 37\nfahrenheit = celsius * 9 / 5 + 32\nprint(fahrenheit)`, output: `98.6` },
+        { title: "Simple interest formula", code: `p, r, t = 1000, 5, 2\nsi = (p * r * t) / 100\nprint("Interest:", si)`, output: `Interest: 100.0` },
+        { title: "Rectangle area & perimeter", code: `length, width = 8, 5\narea = length * width\nperimeter = 2 * (length + width)\nprint(area, perimeter)`, output: `40 26` },
+        { title: "Average of numbers", code: `a, b, c = 70, 80, 90\navg = (a + b + c) / 3\nprint(avg)`, output: `80.0` },
+        { title: "Boolean from a comparison", code: `age = 20\nadult = age >= 18\nprint(adult)`, output: `True` },
+        { title: "id() of a variable", code: `x = 10\nprint(type(id(x)))  # a unique memory id (int)`, output: `<class 'int'>` },
+        { title: "Small integers are cached", code: `a = 100\nb = 100\nprint(a is b)`, output: `True` },
+        { title: "Equal value, may differ in identity", code: `a = [1, 2]\nb = [1, 2]\nprint(a == b, a is b)`, output: `True False` },
+        { title: "List aliasing (same object)", code: `a = [1, 2, 3]\nb = a\nb.append(4)\nprint(a)`, output: `[1, 2, 3, 4]` },
+        { title: "Copy a list (independent)", code: `a = [1, 2, 3]\nb = a.copy()\nb.append(4)\nprint(a, b)`, output: `[1, 2, 3] [1, 2, 3, 4]` },
+        { title: "Walrus operator :=", code: `if (n := 15) > 10:\n    print("n is", n)`, output: `n is 15` },
+        { title: "Type-annotated variable", code: `age: int = 25\nname: str = "Sara"\nprint(age, name)`, output: `25 Sara` },
+        { title: "Multiple types in one assignment", code: `name, age, gpa = "Kiran", 21, 8.5\nprint(name, age, gpa)`, output: `Kiran 21 8.5` },
+        { title: "Store repeated string", code: `line = "=" * 15\nprint(line)`, output: `===============` },
+        { title: "Nested calculation (billing)", code: `price = 200\nqty = 3\ntax = 0.18\nsubtotal = price * qty\ntotal = subtotal + subtotal * tax\nprint(total)`, output: `708.0` },
+        { title: "Chained comparison stored", code: `x = 5\nin_range = 1 < x < 10\nprint(in_range)`, output: `True` },
+        { title: "Reassign to a computed value", code: `score = 40\nscore = score * 2 + 5\nprint(score)`, output: `85` },
+        { title: "Global variable via function", code: `counter = 0\ndef bump():\n    global counter\n    counter += 1\nbump(); bump()\nprint(counter)`, output: `2` },
+        { title: "Constant used in a circle formula", code: `PI = 3.14159\nr = 7\nprint("Circumference:", 2 * PI * r)`, output: `Circumference: 43.98226` }
       ]
     }
   ]

@@ -805,16 +805,20 @@
 
   function renderInterviewTabs(activeTab) {
     var tabs = el("div", "iv-tabs");
+    var due = (window.DPProgress && window.DPProgress.dueReviewCount) ? window.DPProgress.dueReviewCount() : 0;
     var items = [
       { id: "browse",  label: "🔍 Browse",       hash: "#/interview" },
       { id: "rapid",   label: "⚡ Rapid Fire",   hash: "#/interview/rapid-fire" },
       { id: "output",  label: "🔮 Predict Output", hash: "#/interview/output" },
       { id: "debug",   label: "🐞 Find the Bug", hash: "#/interview/debug" },
-      { id: "mock",    label: "🎤 Mock",        hash: "#/interview/mock" },
+      { id: "mock",    label: "🎤 Mock",         hash: "#/interview/mock" },
       { id: "adaptive",label: "🧠 Adaptive",     hash: "#/interview/adaptive" },
+      { id: "review",  label: "🔁 Review" + (due ? ' <span class="iv-tab-badge">' + due + '</span>' : ""), hash: "#/interview/review" },
       { id: "roles",   label: "🎭 By Role",      hash: "#/interview/roles" },
-      { id: "tomorrow",label: "🌅 Tomorrow",    hash: "#/interview/tomorrow" },
-      { id: "scenarios",label: "🚨 Scenarios",  hash: "#/interview/scenarios" },
+      { id: "tomorrow",label: "🌅 Tomorrow",     hash: "#/interview/tomorrow" },
+      { id: "scenarios",label: "🚨 Scenarios",   hash: "#/interview/scenarios" },
+      { id: "sysdes",  label: "🏛️ System Design", hash: "#/interview/system-design" },
+      { id: "jd",      label: "📋 JD Analyzer",  hash: "#/interview/jd" },
       { id: "rounds",  label: "🎯 By Round",     hash: "#/interview/rounds" },
       { id: "dash",    label: "📊 Dashboard",    hash: "#/interview/dashboard" },
       { id: "plans",   label: "📅 Study Plans",  hash: "#/interview/plans" }
@@ -822,7 +826,7 @@
     items.forEach(function (it) {
       var a = el("a", "iv-tab" + (it.id === activeTab ? " active" : ""));
       a.href = it.hash;
-      a.textContent = it.label;
+      a.innerHTML = it.label;
       tabs.appendChild(a);
     });
     return tabs;
@@ -1913,6 +1917,230 @@
   }
 
   /* ============================================================
+     SYSTEM DESIGN by experience band (Spec #19)
+     ============================================================ */
+  function renderSystemDesign() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    if (!data || !data.systemDesignTracks) { content.innerHTML = '<div class="ai-error">SD data not loaded.</div>'; return; }
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🏛️</span> System Design — by Experience</h1>' +
+      '<p class="iv-subtitle">Five tracks from beginner architecture to principal-level trade-offs. Each question has structured hints and expected keywords.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("sysdes"));
+
+    data.systemDesignTracks.forEach(function (track) {
+      var section = el("section", "sd-track");
+      section.innerHTML =
+        '<div class="sd-track-head">' +
+          '<span class="sd-track-icon">' + track.icon + '</span>' +
+          '<div class="sd-track-title-wrap">' +
+            '<div class="sd-track-title">' + escapeHtml(track.title) + '</div>' +
+            '<div class="sd-track-audience">' + escapeHtml(track.audience) + '</div>' +
+          '</div>' +
+          '<div class="sd-track-band">L' + track.expLevel + ' · ' + escapeHtml(track.band) + '</div>' +
+        '</div>' +
+        '<div class="sd-track-focus"><b>Focus:</b> ' + escapeHtml(track.focus) + '</div>';
+      var qlist = el("div", "sd-track-questions");
+      track.questions.forEach(function (q, qi) {
+        var qId = track.id + "-q" + qi;
+        qlist.innerHTML += '<details class="sd-question">' +
+          '<summary class="sd-q-summary"><span class="sd-q-num">Q' + (qi + 1) + '</span>' + escapeHtml(q.q) + '</summary>' +
+          '<div class="sd-q-body">' +
+            '<div class="sd-q-hints"><b>💡 Hints — talk through these:</b><ul>' +
+              q.hints.map(function (h) { return '<li>' + escapeHtml(h) + '</li>'; }).join("") +
+            '</ul></div>' +
+            (q.keywords && q.keywords.length ? '<div class="sd-q-kw"><b>🎯 Keywords the interviewer wants:</b> ' + q.keywords.map(function (k) { return '<span class="iv-kw">' + escapeHtml(k) + '</span>'; }).join(" ") + '</div>' : '') +
+          '</div>' +
+          '</details>';
+      });
+      section.appendChild(qlist);
+      page.appendChild(section);
+    });
+
+    content.appendChild(page);
+    highlightSidebar(null, null);
+    document.title = "System Design | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
+     JOB DESCRIPTION ANALYZER (Spec #20)
+     ============================================================ */
+  function renderJDAnalyzer() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">📋</span> Job Description Analyzer</h1>' +
+      '<p class="iv-subtitle">Paste a JD. We scan for known tech keywords, recommend a role, and pull relevant questions from the bank. Static keyword scanner — not an LLM.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("jd"));
+
+    var wrap = el("div", "jd-wrap");
+    wrap.innerHTML =
+      '<label class="engine-label" for="jdInput">Paste the job description below:</label>' +
+      '<textarea id="jdInput" class="engine-input jd-input" rows="10" placeholder="Paste the full JD here — the more text, the better the analysis." spellcheck="false"></textarea>' +
+      '<div class="jd-actions">' +
+      '<button class="mock-reveal-btn" id="jdAnalyze">🔍 Analyze JD</button>' +
+      '<button class="engine-nav-btn" id="jdClear">Clear</button>' +
+      '</div>' +
+      '<div class="jd-result" id="jdResult"></div>';
+    page.appendChild(wrap);
+    content.appendChild(page);
+
+    function analyze() {
+      var text = $("#jdInput").value;
+      if (!text.trim()) { $("#jdResult").innerHTML = '<div class="ai-error">Paste some text first.</div>'; return; }
+      var r = data.analyzeJD(text);
+      if (!r || !r.totalKeywords) {
+        $("#jdResult").innerHTML = '<div class="jd-empty">Didn\'t find any known tech keywords. Try a longer JD or a Python role.</div>';
+        return;
+      }
+      // Recommended role card
+      var role = null;
+      if (r.recommendedRole) { (data.roles || []).some(function (rr) { if (rr.id === r.recommendedRole) { role = rr; return true; } return false; }); }
+      var roleCard = "";
+      if (role) {
+        roleCard = '<div class="jd-role-card">' +
+          '<div class="jd-role-head">🎯 Best-fit role</div>' +
+          '<div class="jd-role-name">' + role.icon + ' ' + escapeHtml(role.name) + '</div>' +
+          '<div class="jd-role-summary">' + escapeHtml(role.summary) + '</div>' +
+          '<div class="jd-role-cta">' +
+            '<button class="tomorrow-start-btn" id="jdRoleMock">🚀 Start 20-question mock for this role</button>' +
+          '</div>' +
+        '</div>';
+      }
+      // Keywords by category
+      var catHtml = "";
+      Object.keys(r.categorized).forEach(function (cat) {
+        var items = r.categorized[cat];
+        catHtml += '<div class="jd-cat"><div class="jd-cat-name">' + escapeHtml(cat.replace(/_/g, " ")) + '</div><div class="jd-cat-items">' +
+          items.map(function (it) { return '<span class="iv-kw">' + escapeHtml(it.keyword) + (it.count > 1 ? " ×" + it.count : "") + '</span>'; }).join(" ") +
+          '</div></div>';
+      });
+      // Top topics
+      var topicsHtml = r.topTopics.map(function (t) { return '<span class="adaptive-strong-tag">' + escapeHtml(t) + '</span>'; }).join(" ");
+      // Recommended questions (first 12)
+      var recHtml = "";
+      r.recommendedQuestions.slice(0, 12).forEach(function (item, i) {
+        recHtml += '<div class="jd-rec-q">' +
+          '<span class="mock-missed-mark">Q' + (i + 1) + '</span>' +
+          '<span class="mock-missed-q">' + escapeHtml(item.q.q) + '</span>' +
+          '<span class="mock-missed-tag">' + escapeHtml(item.q.level || "") + '</span>' +
+          '</div>';
+      });
+
+      $("#jdResult").innerHTML =
+        '<div class="jd-summary">Found <b>' + r.totalKeywords + '</b> known tech keywords · matched <b>' + r.topTopics.length + '</b> topics</div>' +
+        roleCard +
+        '<div class="jd-block"><h3 class="dash-h2">🎯 Top topics for this JD</h3>' + topicsHtml + '</div>' +
+        '<div class="jd-block"><h3 class="dash-h2">🔍 What we detected</h3>' + catHtml + '</div>' +
+        '<div class="jd-block"><h3 class="dash-h2">📝 Recommended questions to practise</h3>' + (recHtml || '<em>None found</em>') + '</div>' +
+        '<div class="mock-eval-disc">' + escapeHtml(r.disclaimer) + '</div>';
+
+      var goBtn = $("#jdRoleMock");
+      if (goBtn && role) {
+        goBtn.addEventListener("click", function () {
+          var picks = data.pickByRole(role.id, 20);
+          if (!picks.length) return;
+          MOCK_STATE = {
+            config: { role: role.id, count: 20, source: "jd" },
+            questions: picks,
+            idx: 0,
+            answers: picks.map(function () { return { selfMark: null, timeSec: 0, revealed: false }; }),
+            startedAt: Date.now(),
+            qStart: Date.now()
+          };
+          location.hash = "#/interview/mock/session";
+        });
+      }
+    }
+
+    $("#jdAnalyze").addEventListener("click", analyze);
+    $("#jdClear").addEventListener("click", function () { $("#jdInput").value = ""; $("#jdResult").innerHTML = ""; });
+
+    highlightSidebar(null, null);
+    document.title = "JD Analyzer | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
+     SPACED REVISION — Review Due (Spec #24)
+     ============================================================ */
+  function renderReviewDue() {
+    var content = $("#content"); content.innerHTML = "";
+    var data = window.DP_INTERVIEW;
+    var page = el("div", "interview-page");
+    page.innerHTML = '<div class="iv-header">' +
+      '<h1><span class="iv-icon">🔁</span> Review Due — Spaced Revision</h1>' +
+      '<p class="iv-subtitle">Questions you got wrong are scheduled for review at 1 → 3 → 7 → 14 days. Answer correctly to graduate them.</p>' +
+      '</div>';
+    page.appendChild(renderInterviewTabs("review"));
+
+    if (!window.DPProgress) { content.appendChild(page); return; }
+    var due = window.DPProgress.getDueReviews(data.questions);
+
+    if (!due.length) {
+      var empty = el("div", "review-empty");
+      empty.innerHTML = '<div class="review-empty-icon">🎉</div>' +
+        '<h3>You\'re all caught up!</h3>' +
+        '<p>No questions due for review right now. Come back tomorrow, or attempt more questions to build a review pipeline.</p>' +
+        '<div><a class="tomorrow-start-btn" href="#/interview/adaptive">🧠 Try Adaptive Practice</a></div>';
+      page.appendChild(empty);
+      content.appendChild(page);
+      return;
+    }
+
+    var info = el("div", "review-info");
+    info.innerHTML = '<b>' + due.length + '</b> question' + (due.length === 1 ? "" : "s") + ' due for review. Review each — if you get it right, it moves to the next interval.';
+    page.appendChild(info);
+
+    var list = el("div", "review-list");
+    due.forEach(function (item) {
+      var qId = item.index;
+      var card = renderQuestionCard(item.q, qId);
+      // Add review actions at the top of body
+      var reviewBar = el("div", "review-actions");
+      var lvl = item.review.level;
+      reviewBar.innerHTML = '<div class="review-schedule">Currently at: <b>' + lvl + '</b></div>' +
+        '<button class="review-btn review-btn-good" data-idx="' + qId + '">✅ Got it — advance</button>' +
+        '<button class="review-btn review-btn-again" data-idx="' + qId + '">🔁 Missed — repeat tomorrow</button>' +
+        '<button class="review-btn" data-idx="' + qId + '" data-act="graduate">🎓 Mastered — remove</button>';
+      // Insert reviewBar just after the header inside the card
+      var body = card.querySelector(".iv-card-body");
+      if (body) body.insertBefore(reviewBar, body.firstChild);
+      list.appendChild(card);
+    });
+    page.appendChild(list);
+    content.appendChild(page);
+
+    list.querySelectorAll(".review-btn").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var idx = parseInt(this.dataset.idx, 10);
+        var act = this.dataset.act;
+        if (this.classList.contains("review-btn-good")) {
+          window.DPProgress.advanceReview(idx);
+          window.DPProgress.markCorrect(idx);
+        } else if (this.classList.contains("review-btn-again")) {
+          window.DPProgress.scheduleReview(idx, "1d");
+          window.DPProgress.markIncorrect(idx);
+        } else if (act === "graduate") {
+          window.DPProgress.resetReview(idx);
+        }
+        // Re-render page
+        renderReviewDue();
+      });
+    });
+
+    highlightSidebar(null, null);
+    document.title = "Review Due | Interview";
+    content.focus(); window.scrollTo(0, 0);
+  }
+
+  /* ============================================================
      MOCK INTERVIEW FLOW  (Phase 5)
      Config screen -> Session screen -> Result screen
      State stored in-memory + last result in localStorage
@@ -2407,6 +2635,9 @@
       renderScenarioDetail(sm[1]);
     }
     else if (/^#\/interview\/scenarios/.test(hash))     { renderScenarios(); }
+    else if (/^#\/interview\/system-design/.test(hash)) { renderSystemDesign(); }
+    else if (/^#\/interview\/jd/.test(hash))            { renderJDAnalyzer(); }
+    else if (/^#\/interview\/review/.test(hash))        { renderReviewDue(); }
     else if (/^#\/interview/.test(hash)) { renderInterview(); }
     else {
       var m = hash.match(/^#\/module\/(\d+)(?:\/([^/]+))?/);

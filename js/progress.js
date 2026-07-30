@@ -80,7 +80,56 @@
       var k = keyFor(id);
       state.incorrect[k] = Date.now();
       delete state.correct[k];
+      // Schedule spaced review: 1 day from now on first miss
+      API.scheduleReview(id, "1d");
       save();
+    },
+
+    /* ---- Spaced Revision (Spec #24) ---- */
+    scheduleReview: function (id, spacing) {
+      var k = keyFor(id);
+      state.review = state.review || {};
+      var days = { "today": 0, "1d": 1, "3d": 3, "7d": 7, "14d": 14 }[spacing] || 1;
+      var due = Date.now() + days * 24 * 60 * 60 * 1000;
+      state.review[k] = { due: due, level: spacing, scheduledAt: Date.now() };
+      save();
+    },
+    advanceReview: function (id) {
+      var k = keyFor(id);
+      if (!state.review || !state.review[k]) return;
+      var order = ["1d", "3d", "7d", "14d"];
+      var cur = state.review[k].level;
+      var idx = order.indexOf(cur);
+      if (idx === -1 || idx === order.length - 1) { delete state.review[k]; save(); return; }
+      API.scheduleReview(id, order[idx + 1]);
+    },
+    resetReview: function (id) {
+      var k = keyFor(id);
+      if (state.review && state.review[k]) { delete state.review[k]; save(); }
+    },
+    reviewInfo: function (id) {
+      var k = keyFor(id);
+      return (state.review && state.review[k]) || null;
+    },
+    getDueReviews: function (questions) {
+      state.review = state.review || {};
+      var now = Date.now();
+      var out = [];
+      Object.keys(state.review).forEach(function (k) {
+        if (state.review[k].due <= now) {
+          var idx = parseInt(k, 10);
+          if (!isNaN(idx) && questions[idx]) {
+            out.push({ q: questions[idx], index: idx, review: state.review[k] });
+          }
+        }
+      });
+      return out.sort(function (a, b) { return a.review.due - b.review.due; });
+    },
+    dueReviewCount: function () {
+      state.review = state.review || {};
+      var now = Date.now(), n = 0;
+      Object.keys(state.review).forEach(function (k) { if (state.review[k].due <= now) n++; });
+      return n;
     },
     isCorrect: function (id) { return !!state.correct[keyFor(id)]; },
     isIncorrect: function (id) { return !!state.incorrect[keyFor(id)]; },

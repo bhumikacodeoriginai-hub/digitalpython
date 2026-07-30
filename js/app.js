@@ -112,7 +112,8 @@
       '<div class="hero-cta">' +
         '<a class="btn btn-primary" href="#/module/1">🚀 ' + escapeHtml(T("getStarted")) + "</a>" +
         '<a class="btn btn-ghost" href="#/workspace">▶ ' + escapeHtml(T("openWorkspaceCta")) + "</a>" +
-      "</div>";
+      "</div>" +
+      '<div class="hero-progress"><div class="bar" style="--progress:' + getProgressPercent() + '%"></div></div>';
     content.appendChild(hero);
 
     content.appendChild(el("div", "home-section-title", T("allModules")));
@@ -169,6 +170,7 @@
     document.title = "M" + mod.id + " · " + modTitle(mod) + " | " + T("heroTitle");
     if (conceptSlug) { var target = document.getElementById("c-" + conceptSlug); if (target) { target.scrollIntoView(); return; } }
     content.focus(); window.scrollTo(0, 0);
+    markModuleVisited(mod.id);
   }
 
   function renderConcept(con) {
@@ -280,13 +282,30 @@
 
   /* ---------- Workspace ---------- */
   var WS_SAMPLES = [
-    { name: "Hello", code: 'print("Hello from Code Origin.AI!")' },
-    { name: "Loop", code: 'for i in range(1, 6):\n    print("Line", i)' },
-    { name: "Sum 1..100", code: 'total = sum(range(1, 101))\nprint("Sum =", total)' },
-    { name: "FizzBuzz", code: 'for n in range(1, 16):\n    if n % 15 == 0:\n        print("FizzBuzz")\n    elif n % 3 == 0:\n        print("Fizz")\n    elif n % 5 == 0:\n        print("Buzz")\n    else:\n        print(n)' },
-    { name: "Factorial", code: 'def fact(n):\n    return 1 if n <= 1 else n * fact(n - 1)\n\nfor i in range(1, 8):\n    print(i, "! =", fact(i))' },
-    { name: "List comp", code: 'squares = [x*x for x in range(1, 11)]\nprint(squares)' }
+    { name: "Hello World", code: 'print("Hello from Code Origin.AI!")\nprint("Welcome to Digital Python Notes")' },
+    { name: "Variables", code: '# Variables demo\nname = "Arjun"\nage = 25\nsalary = 45000.50\n\nprint(f"Name: {name}")\nprint(f"Age: {age}")\nprint(f"Salary: {salary}")' },
+    { name: "Loop", code: '# For loop with range\nfor i in range(1, 11):\n    print(f"Line {i}: {\"*\" * i}")' },
+    { name: "Sum 1..100", code: '# Sum of numbers 1 to 100\ntotal = sum(range(1, 101))\nprint(f"Sum of 1 to 100 = {total}")' },
+    { name: "FizzBuzz", code: '# Classic FizzBuzz\nfor n in range(1, 21):\n    if n % 15 == 0:\n        print("FizzBuzz")\n    elif n % 3 == 0:\n        print("Fizz")\n    elif n % 5 == 0:\n        print("Buzz")\n    else:\n        print(n)' },
+    { name: "Factorial", code: '# Recursive factorial\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\nfor i in range(1, 11):\n    print(f"{i}! = {factorial(i)}")' },
+    { name: "List & Dict", code: '# List operations\nnums = [5, 2, 8, 1, 9, 3]\nnums.sort()\nprint("Sorted:", nums)\nprint("Max:", max(nums))\nprint("Sum:", sum(nums))\n\n# Dictionary\nstudent = {"name": "Sara", "score": 95}\nfor k, v in student.items():\n    print(f"  {k}: {v}")' },
+    { name: "OOP Class", code: '# Object-Oriented Programming\nclass BankAccount:\n    def __init__(self, owner, balance=0):\n        self.owner = owner\n        self.balance = balance\n    \n    def deposit(self, amount):\n        self.balance += amount\n        print(f"Deposited {amount}. Balance: {self.balance}")\n    \n    def withdraw(self, amount):\n        if amount > self.balance:\n            print("Insufficient funds!")\n        else:\n            self.balance -= amount\n            print(f"Withdrew {amount}. Balance: {self.balance}")\n\nacc = BankAccount("Ravi", 1000)\nacc.deposit(500)\nacc.withdraw(200)\nacc.withdraw(2000)' },
+    { name: "Pattern", code: '# Diamond pattern\nn = 5\nfor i in range(1, n+1):\n    print(" " * (n-i) + "*" * (2*i-1))\nfor i in range(n-1, 0, -1):\n    print(" " * (n-i) + "*" * (2*i-1))' },
+    { name: "File & JSON", code: 'import json\n\n# Create data\nstudents = [\n    {"name": "Arjun", "marks": 85},\n    {"name": "Meera", "marks": 92},\n    {"name": "Ravi", "marks": 78}\n]\n\n# Convert to JSON\njson_str = json.dumps(students, indent=2)\nprint(json_str)\nprint(f"\\nTotal students: {len(students)}")\nprint(f"Average: {sum(s[\"marks\"] for s in students)/len(students):.1f}")' }
   ];
+
+  /* ---------- Progress Tracking ---------- */
+  var PROGRESS = { completed: {} };
+  try { var saved = localStorage.getItem("dp-progress"); if (saved) PROGRESS = JSON.parse(saved); } catch (e) {}
+  function saveProgress() { try { localStorage.setItem("dp-progress", JSON.stringify(PROGRESS)); } catch (e) {} }
+  function markModuleVisited(modId) {
+    if (!PROGRESS.completed[modId]) { PROGRESS.completed[modId] = Date.now(); saveProgress(); }
+  }
+  function getProgressPercent() {
+    var total = MODULES.length;
+    var done = Object.keys(PROGRESS.completed).length;
+    return Math.round((done / total) * 100);
+  }
 
   function renderWorkspace() {
     var content = $("#content"); content.innerHTML = "";
@@ -304,10 +323,24 @@
       '<button class="ws-btn run" id="wsRun">▶ ' + T("run") + "</button>";
     panel.appendChild(toolbar);
 
+    var editorWrap = el("div", "ws-editor-wrap");
+    var lineNums = el("div", "ws-lines"); lineNums.id = "wsLines";
     var editor = el("textarea", "ws-editor"); editor.id = "wsEditor"; editor.spellcheck = false;
-    editor.value = pendingWorkspaceCode != null ? pendingWorkspaceCode : WS_SAMPLES[3].code;
+    editor.value = pendingWorkspaceCode != null ? pendingWorkspaceCode : WS_SAMPLES[4].code;
     pendingWorkspaceCode = null;
-    panel.appendChild(editor);
+    editorWrap.appendChild(lineNums);
+    editorWrap.appendChild(editor);
+    panel.appendChild(editorWrap);
+
+    function updateLineNums() {
+      var lines = editor.value.split("\n").length;
+      var html = "";
+      for (var i = 1; i <= Math.max(lines, 12); i++) html += i + "\n";
+      lineNums.textContent = html;
+    }
+    updateLineNums();
+    editor.addEventListener("input", updateLineNums);
+    editor.addEventListener("scroll", function () { lineNums.scrollTop = editor.scrollTop; });
 
     var console = el("div", "ws-console"); console.id = "wsConsole";
     console.innerHTML = '<span class="ph"># ' + escapeHtml(T("runHint")) + "</span>";
